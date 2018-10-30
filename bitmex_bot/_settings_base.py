@@ -10,9 +10,12 @@ BASE_URL = "https://testnet.bitmex.com/api/v1/"
 # BASE_URL = "https://www.bitmex.com/api/v1/" # Once you're ready, uncomment this.
 
 # The BitMEX API requires permanent API keys. Go to https://testnet.bitmex.com/api/apiKeys to fill these out.
-API_KEY = ""
-API_SECRET = ""
+API_KEY = "Szd7S0zjG-4Mjv9twHmhKwmb"
+API_SECRET = "m3GNvYLYnSRHUwnUctpD4dvF9b3AqGSPuSuoLO0YnnuCmYYO"
 
+# LIVE key
+#Po5MZwz6tD-5HbtENDRaYp3p
+#otsuSV1bEzwXCvNr_yZl76MeJhjAdhQLwGl0DysPUZwhDBII
 
 ########################################################################################################################
 # Target
