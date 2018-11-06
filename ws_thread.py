@@ -13,7 +13,7 @@ from bitmex_bot.utils.log import setup_custom_logger
 from bitmex_bot.utils.math import toNearest
 from future.utils import iteritems
 from future.standard_library import hooks
-import stats
+import realtime_stats
 with hooks():  # Python 2/3 compat
     from urllib.parse import urlparse, urlunparse
 
@@ -331,7 +331,7 @@ if __name__ == "__main__":
     ws.logger = logger
     ws.connect("https://www.bitmex.com/api/v1", symbol="ETHUSD")
 
-    stats = stats.Stats(ws = ws)
+    stats = realtime_stats.RealtimeStats(ws = ws)
     stats.run()
     #while(ws.ws.sock.connected):
     #    print(ws.data['trade'])
