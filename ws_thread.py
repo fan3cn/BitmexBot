@@ -13,6 +13,7 @@ from bitmex_bot.utils.log import setup_custom_logger
 from bitmex_bot.utils.math import toNearest
 from future.utils import iteritems
 from future.standard_library import hooks
+import stats
 with hooks():  # Python 2/3 compat
     from urllib.parse import urlparse, urlunparse
 
@@ -329,7 +330,9 @@ if __name__ == "__main__":
     ws = BitMEXWebsocket()
     ws.logger = logger
     ws.connect("https://testnet.bitmex.com/api/v1")
-    while(ws.ws.sock.connected):
-        print(ws.data['trade'])
-        sleep(1)
+
+    stats = Stats(ws = ws)
+    #while(ws.ws.sock.connected):
+    #    print(ws.data['trade'])
+    #    sleep(1)
 
