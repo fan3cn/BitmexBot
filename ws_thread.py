@@ -329,9 +329,10 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     ws = BitMEXWebsocket()
     ws.logger = logger
-    ws.connect("https://testnet.bitmex.com/api/v1")
+    ws.connect("https://www.bitmex.com/api/v1")
 
-    stats = Stats(ws = ws)
+    stats = stats.Stats(ws = ws)
+    stats.run()
     #while(ws.ws.sock.connected):
     #    print(ws.data['trade'])
     #    sleep(1)
