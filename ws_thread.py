@@ -329,7 +329,7 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     ws = BitMEXWebsocket()
     ws.logger = logger
-    ws.connect("https://www.bitmex.com/api/v1")
+    ws.connect("https://www.bitmex.com/api/v1", symbol="ETHUSD")
 
     stats = stats.Stats(ws = ws)
     stats.run()
