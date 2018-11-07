@@ -2,6 +2,8 @@ import logging
 from collections import deque
 from time import sleep
 
+MAX_INTEGER = 10000000
+
 class RealtimeStats():
     def __init__(self, ws):
         self.logger = logging.getLogger('RealtimeStats')
@@ -12,7 +14,7 @@ class RealtimeStats():
         self.price_change_rate = 0.0
         self.last_price = 0.0
         self.high = 0.0
-        self.low = 0.0
+        self.low = MAX_INTEGER
 
         # trade volume
         self.buy_size = 0.0
@@ -56,12 +58,12 @@ class RealtimeStats():
             self.buy_size = buy_size
             self.sell_size = sell_size
             self.total_size = buy_size + sell_size
-            self.buy_sell_size_ratio = buy_size / sell_size if sell_size > 0 else 100000
+            self.buy_sell_size_ratio = buy_size / sell_size if sell_size > 0 else MAX_INTEGER
 
             self.buy_count = buy_count
             self.sell_count = sell_count
             self.total_count = buy_count + sell_count
-            self.buy_sell_count_ratio = buy_count / sell_count if sell_count > 0 else 100000 
+            self.buy_sell_count_ratio = buy_count / sell_count if sell_count > 0 else MAX_INTEGER
             
             self.logger.info("%d-%d-%d-%f|-%d-%d-%d-%f|%d-%f-%f|%f-%f"%(
                 self.total_size,
