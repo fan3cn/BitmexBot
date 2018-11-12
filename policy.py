@@ -203,9 +203,34 @@ class Policy():
                          .format(self.open(trade), trade['high'], trade['low'], self.close(trade),
                                  self.trade_volume(trade), localtime))
 
+    # 使用历史数据测试
+    def test(self):
+        self.logger.info("Policy test running...")
+
+        # start from 7/1 to 11/1
+        UTC_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+        start_time = datetime.datetime.strptime('2018-07-01T00:00:000Z', UTC_FORMAT)
+        for d in range(4 * 30):
+            end_time =start_time + datetime.timedelta(days=1)
+            trades_5_min = Bitmex().get_historical_data(start_time=start_time, end_time=end_time)
+
+            i = 0
+            j = 5
+            while (j < len(trades_5_min)):
+
+                self.trades_5_min = trades_5_min[i:j][::-1]
+                self.trade_signal()
+
+                i += 1
+                j += 1
+
+                sleep(1)
+
+            start_time = end_time
+
 
 if __name__ == "__main__":
-    print("Policy starts....")
+    #print("Policy starts....")
     # create console handler and set level to debug
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
@@ -217,7 +242,7 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     p = Policy()
     p.logger = logger
-    p.run()
+    p.test()
 
 
 

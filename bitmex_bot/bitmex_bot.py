@@ -11,6 +11,7 @@ from bitmex_bot import bitmex, indicators
 from bitmex_bot.settings import settings
 from bitmex_bot.utils import log, constants, errors
 from bitmex_bot.bitmex_historical import Bitmex
+from policy import Policy
 
 from bitmex_bot.bot_trade import BOT_TRADE
 
@@ -72,62 +73,8 @@ class ExchangeInterface:
 
         sleep(settings.API_REST_INTERVAL)
 
-    def get_portfolio(self):
-        contracts = settings.CONTRACTS
-        portfolio = {}
-        for symbol in contracts:
-            position = self.bitmex.position(symbol=symbol)
-            instrument = self.bitmex.instrument(symbol=symbol)
-            if instrument['isQuanto']:
-                future_type = "Quanto"
-            elif instrument['isInverse']:
-                future_type = "Inverse"
-            elif not instrument['isQuanto'] and not instrument['isInverse']:
-                future_type = "Linear"
-            else:
-                raise NotImplementedError("Unknown future type; not quanto or inverse: %s" % instrument['symbol'])
-
-            if instrument['underlyingToSettleMultiplier'] is None:
-                multiplier = float(instrument['multiplier']) / float(instrument['quoteToSettleMultiplier'])
-            else:
-                multiplier = float(instrument['multiplier']) / float(instrument['underlyingToSettleMultiplier'])
-
-            portfolio[symbol] = {
-                "currentQty": float(position['currentQty']),
-                "futureType": future_type,
-                "multiplier": multiplier,
-                "markPrice": float(instrument['markPrice']),
-                "spot": float(instrument['indicativeSettlePrice']),
-            }
-
-        return portfolio
-
     def get_user_balance(self):
         return self.bitmex.user_balance()
-
-    def calc_delta(self):
-        """Calculate currency delta for portfolio"""
-        portfolio = self.get_portfolio()
-        spot_delta = 0
-        mark_delta = 0
-        for symbol in portfolio:
-            item = portfolio[symbol]
-            if item['futureType'] == "Quanto":
-                spot_delta += item['currentQty'] * item['multiplier'] * item['spot']
-                mark_delta += item['currentQty'] * item['multiplier'] * item['markPrice']
-            elif item['futureType'] == "Inverse":
-                spot_delta += (item['multiplier'] / item['spot']) * item['currentQty']
-                mark_delta += (item['multiplier'] / item['markPrice']) * item['currentQty']
-            elif item['futureType'] == "Linear":
-                spot_delta += item['multiplier'] * item['currentQty']
-                mark_delta += item['multiplier'] * item['currentQty']
-        basis_delta = mark_delta - spot_delta
-        delta = {
-            "spot": spot_delta,
-            "mark_price": mark_delta,
-            "basis": basis_delta
-        }
-        return delta
 
     def get_delta(self, symbol=None):
         if symbol is None:
@@ -227,20 +174,15 @@ class OrderManager:
         self.current_bitmex_price = 0
         logger.info("-------------------------------------------------------------")
         logger.info("Starting Bot......")
-        self.macd_signal = False
-        self.current_ask_price = 0
-        self.current_bid_price = 0
+        self.policy = Policy()
+        self.trade_signal = self.policy.trade_signal()
         # price at which bot enters first order
-        self.sequence = ""
         self.last_price = 0
         # to store current prices for per bot run
-        self.initial_order = False
-        self.close_order = False
         self.amount = settings.POSITION
         self.is_trade = False
         self.stop_price = 0
         self.profit_price = 0
-        self.trade_signal = False
         logger.info("Using symbol %s." % self.exchange.symbol)
 
     def init(self):
@@ -527,7 +469,7 @@ def run():
     # Try/except just keeps ctrl-c from printing an ugly stacktrace
     try:
         try:
-            om.init()
+            #om.init()
             om.run_loop()
         except (KeyboardInterrupt, SystemExit):
             sys.exit()
