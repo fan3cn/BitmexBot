@@ -36,7 +36,7 @@ class Bitmex(object):
                     dict_key[6]: item[dict_key[6]]
                 }
                 lst.append(d)
-            return lst[::-1]
+            return lst
         except KeyError as e:
             pass
         except TypeError as e:
