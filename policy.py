@@ -180,14 +180,17 @@ class Policy():
 
         self.format_OHLC_log(self.trades_5_min[0])
 
-        if self.rule_1() > self.TREND_FLAT:
-            return self.rule_1()
+        r1 = self.rule_1()
+        if r1 > self.TREND_FLAT:
+            return r1
 
-        if self.rule_2() > self.TREND_FLAT:
-            return self.rule_2()
+        r2 = self.rule_2()
+        if r2 > self.TREND_FLAT:
+            return r2
 
-        if self.rule_3() > self.TREND_FLAT:
-            return self.rule_3()
+        r3 = self.rule_3()
+        if r3 > self.TREND_FLAT:
+            return r3
 
         return self.TREND_FLAT
 
