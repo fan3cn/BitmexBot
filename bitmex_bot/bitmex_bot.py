@@ -160,6 +160,8 @@ class ExchangeInterface:
             kwargs.pop('side')
             return self.bitmex.sell(**kwargs)
 
+    def set_leverage(self):
+        return self.bitmex.set_leverage()
 
 class OrderManager:
     UP = "up"
@@ -197,6 +199,8 @@ class OrderManager:
         self.reset()
         # set cross margin for the trade
         self.exchange.set_isolate_margin()
+        # set the leverage
+        self.exchange.set_leverage()
 
     # self.place_orders()
 
@@ -215,28 +219,6 @@ class OrderManager:
         logger.info("Current XBT Balance : %.6f" % XBt_to_XBT(self.start_XBt))
         logger.info("Contracts Traded This Run by BOT: %d" % (self.running_qty - self.starting_qty1))
         logger.info("Total Contract Delta: %.4f XBT" % self.exchange.calc_delta()['spot'])
-
-    def macd_check(self):
-        # print("yes macd")
-        # as latest price is last one
-        up_vote = 0
-        down_vote = 0
-        data = Bitmex().get_historical_data(tick=settings.TICK_INTERVAL)
-
-        if data:
-            price_list = list(map(lambda i: i['close'], data))
-            data = indicators.macd(price_list)
-            status = data[-1]
-            if status > 0:
-                up_vote += 1
-                self.macd_signal = self.UP
-            elif status < 0:
-                down_vote += 1
-                self.macd_signal = self.DOWN
-            else:
-                self.macd_signal = False
-        else:
-            logger.error("Tick interval not supported")
 
     def get_ticker(self):
         ticker = self.exchange.get_ticker()
@@ -277,7 +259,6 @@ class OrderManager:
         price = data['buy']
         # if not (price == self.price_list[-1]):
         self.last_price = price
-        self.macd_check()
 
     ###
     # Sanity
@@ -288,115 +269,72 @@ class OrderManager:
 
         # Check if OB is empty - if so, can't quote.
         self.exchange.check_if_orderbook_empty()
-
         # Ensure market is still open.
         self.exchange.check_market_open()
+
         self.get_exchange_price()
         # print(self.exchange.get_orders())
         logger.info("current BITMEX price is {}".format(self.last_price))
         # self.get_exchange_price()
 
-        logger.info("Current Price is {} MACD signal {}".format(self.last_price, self.macd_signal))
+        signal = self.policy.trade_signal()
+
+        logger.info("Current Price is {}, trade signal: {}".format(self.last_price, signal))
+
+        position = self.exchange.get_position()
+
+        if self.is_trade and position == 0:
+            self.exchange.cancel_all_orders()
+            self.is_trade = False
+
         if not self.is_trade:
-            if self.macd_signal:
-                if self.macd_signal == self.UP:
-                    logger.info("Buy Trade Signal {}".format(self.last_price))
-                    logger.info("-----------------------------------------")
-                    self.is_trade = True
-                    self.sequence = self.BUY
+            if signal == self.policy.TREND_UP:
+                logger.info("Buy Trade Signal {}".format(self.last_price))
+                logger.info("-----------------------------------------")
+                self.is_trade = True
+                order = self.place_orders(side=self.BUY, orderType='Market', quantity=self.amount)
+                if settings.STOP_PROFIT_FACTOR != "":
+                    self.profit_price = order['price'] + settings.STOP_PROFIT_FACTOR
+                if settings.STOP_LOSS_FACTOR != "":
+                    self.stop_price = order['price'] - settings.STOP_LOSS_FACTOR
+                print("Order price {} \tStop Price {} \tProfit Price {} ".
+                      format(order['price'], self.stop_price, self.profit_price))
+                sleep(settings.API_REST_INTERVAL)
 
-                    if not self.initial_order:
-                        order = self.place_orders(side=self.BUY, orderType='Market', quantity=self.amount)
-                        self.trade_signal = self.macd_signal
-                        self.initial_order = True
-                        if settings.STOP_PROFIT_FACTOR != "":
-                            self.profit_price = order['price'] + (order['price'] * settings.STOP_PROFIT_FACTOR)
-                        if settings.STOP_LOSS_FACTOR != "":
-                            self.stop_price = order['price'] - (order['price'] * settings.STOP_LOSS_FACTOR)
-                        print("Order price {} \tStop Price {} \tProfit Price {} ".
-                              format(order['price'], self.stop_price, self.profit_price))
-                        sleep(settings.API_REST_INTERVAL)
-                        if settings.STOP_LOSS_FACTOR != "":
-                            self.place_orders(side=self.SELL, orderType='StopLimit', quantity=self.amount,
-                                              price=int(self.stop_price), stopPx=int(self.stop_price) - 5.0)
-                            sleep(settings.API_REST_INTERVAL)
-                        if settings.STOP_PROFIT_FACTOR != "":
-                            self.place_orders(side=self.SELL, orderType='Limit', quantity=self.amount,
-                                              price=int(self.profit_price))
-                            sleep(settings.API_REST_INTERVAL)
-                        self.close_order = True
+                if settings.STOP_LOSS_FACTOR != "":
+                    self.place_orders(side=self.SELL, orderType='Limit', quantity=self.amount,
+                                      price=int(self.stop_price))
+                    sleep(settings.API_REST_INTERVAL)
 
-                elif self.macd_signal == self.DOWN:
-                    logger.info("Sell Trade Signal {}".format(self.last_price))
-                    logger.info("-----------------------------------------")
-                    self.is_trade = True
-                    self.sequence = self.SELL
-                    # place order
-                    if not self.initial_order:
-                        order = self.place_orders(side=self.SELL, orderType='Market', quantity=self.amount)
-                        self.trade_signal = self.macd_signal
-                        self.initial_order = True
-                        if settings.STOP_PROFIT_FACTOR != "":
-                            self.profit_price = order['price'] - (order['price'] * settings.STOP_PROFIT_FACTOR)
-                        if settings.STOP_LOSS_FACTOR != "":
-                            self.stop_price = order['price'] + (order['price'] * settings.STOP_LOSS_FACTOR)
+                if settings.STOP_PROFIT_FACTOR != "":
+                    self.place_orders(side=self.SELL, orderType='Limit', quantity=self.amount,
+                                      price=int(self.profit_price))
+                    sleep(settings.API_REST_INTERVAL)
 
-                        print("Order price {} \tStop Price {} \tProfit Price {} ".
-                              format(order['price'], self.stop_price, self.profit_price))
-                        sleep(settings.API_REST_INTERVAL)
-                        if settings.STOP_LOSS_FACTOR != "":
-                            self.place_orders(side=self.BUY, orderType='StopLimit', quantity=self.amount,
-                                              price=int(self.stop_price), stopPx=int(self.stop_price) - 5.0)
-                            sleep(settings.API_REST_INTERVAL)
-                        if settings.STOP_PROFIT_FACTOR != "":
-                            self.place_orders(side=self.BUY, orderType='Limit', quantity=self.amount,
-                                              price=int(self.profit_price))
-                            sleep(settings.API_REST_INTERVAL)
-                        self.close_order = True
-                        # set cross margin for the trade
+            elif signal == self.policy.TREND_DOWN:
+                logger.info("Sell Trade Signal {}".format(self.last_price))
+                logger.info("-----------------------------------------")
+                self.is_trade = True
+                self.sequence = self.SELL
+                # place order
+                order = self.place_orders(side=self.SELL, orderType='Market', quantity=self.amount)
 
-        else:
-            if self.macd_signal and self.macd_signal != self.trade_signal and self.trade_signal:
-                # TODO close all positions on market price immediately and cancel ALL open orders(including stops).
-                self.exchange.close_position()
-                # sleep(settings.API_REST_INTERVAL)
-                self.exchange.cancel_all_orders()
-                self.is_trade = False
-                self.close_order = False
-                self.initial_order = False
-                self.sequence = ""
-                self.profit_price = 0
-                self.stop_price = 0
-                self.trade_signal = False
-                sleep(5)
+                if settings.STOP_PROFIT_FACTOR != "":
+                    self.profit_price = order['price'] - settings.STOP_PROFIT_FACTOR
+                if settings.STOP_LOSS_FACTOR != "":
+                    self.stop_price = order['price'] + settings.STOP_LOSS_FACTOR
 
-            elif self.close_order and self.exchange.get_position() == 0 and len(self.exchange.get_orders()) == 0:
-                self.is_trade = False
-                self.close_order = False
-                self.initial_order = False
-                self.sequence = ""
-                self.profit_price = 0
-                self.stop_price = 0
-                self.trade_signal = False
-            else:
-                data = self.exchange.get_orders()
-                if len(data) == 1:
-                    if data[0]['ordType'] == "StopLimit" and data[0]['ordStatus'] == 'New':
-                        if data[0]['triggered'] == "":
-                            self.exchange.cancel_all_orders()
-                            self.is_trade = False
-                            self.close_order = False
-                            self.initial_order = False
-                            self.sequence = ""
-                            self.profit_price = 0
-                            self.stop_price = 0
-                            self.trade_signal = False
-
-
-
-    ###
-    # Running
-    ###
+                print("Order price {} \tStop Price {} \tProfit Price {} ".
+                      format(order['price'], self.stop_price, self.profit_price))
+                sleep(settings.API_REST_INTERVAL)
+                if settings.STOP_LOSS_FACTOR != "":
+                    self.place_orders(side=self.BUY, orderType='Limit', quantity=self.amount,
+                                      price=int(self.stop_price))
+                    sleep(settings.API_REST_INTERVAL)
+                if settings.STOP_PROFIT_FACTOR != "":
+                    self.place_orders(side=self.BUY, orderType='Limit', quantity=self.amount,
+                                      price=int(self.profit_price))
+                    sleep(settings.API_REST_INTERVAL)
 
     def check_file_change(self):
         """Restart if any files we're watching have changed."""

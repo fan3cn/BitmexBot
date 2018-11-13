@@ -18,11 +18,12 @@ class BitMEX(object):
     """BitMEX API Connector."""
 
     def __init__(self, base_url=None, symbol=None, apiKey=None, apiSecret=None,
-                 orderIDPrefix='mm_bitmex_', shouldWSAuth=True, postOnly=False):
+                 orderIDPrefix='mm_bitmex_', shouldWSAuth=True, postOnly=False, leverage=10):
         """Init connector."""
         self.logger = logging.getLogger('root')
         self.base_url = base_url
         self.symbol = symbol
+        self.leverage = leverage
         self.postOnly = postOnly
         if (apiKey is None):
             raise Exception("Please set an API key and Secret to get started. See " +
@@ -235,6 +236,15 @@ class BitMEX(object):
             'address': address
         }
         return self._curl_bitmex(path=path, postdict=postdict, verb="POST", max_retries=0)
+
+    @authentication_required
+    def set_leverage(self):
+        path = "/position/leverage"
+        postdict = {
+            'symbol': self.symbol,
+            'leverage': self.leverage
+        }
+        return self._curl_bitmex(path=path, postdict=postdict, verb="POST", max_retries=1)
 
     def _curl_bitmex(self, path, query=None, postdict=None, timeout=5, verb=None, rethrow_errors=False,
                      max_retries=None):
