@@ -236,25 +236,45 @@ class Policy():
                 close = float(self.trades_5_min[0]['close'])
                 open = float(self.trades_5_min[0]['open'])
 
-                start = open if open <= close else close
-                end = close if open > close else open
+                #start = open if open <= close else close
+                #end = close if open > close else open
+
+                price = (open + close)/2
 
                 if self.is_in_trade:
                     #持单中，检查止盈止损
-                    if self.profit_price >= start and self.profit_price <= end:
-                        # 止盈，按照最低价格卖出
-                        if self.position > 0:
-                            # 多单，卖出止盈
-                            profit = self.eth_num * start - self.contract_num
+                    if self.position > 0:
+                        # 多单，卖出止盈、止损
+                        if price >= self.profit_price or price <= self.stop_price:
+                            profit = self.eth_num * price - self.contract_num
                             self.position = self.position - self.contract_num
-                        else:
-                            # 空单，买入止盈
-                            profit = self.contract_num - self.eth_num * end
-                            self.position = self.position + self.contract_num
+                            self.balance = self.balance + profit
+                            self.reset()
 
-                        self.balance = self.balance + profit
-                        self.logger.info("Limit profit at price:{}, ETH num:{}, balance:{}, position:{}".format(start, self.eth_num, self.balance, self.position))
-                        self.reset()
+                            if price >= self.profit_price:
+                                self.logger.info("Take profit at price:{}, ETH num:{}, balance:{}, position:{}"
+                                                 .format(price, self.eth_num, self.balance, self.position))
+
+                            if price <= self.stop_price:
+                                self.logger.info("Stop loss at price:{}, ETH num:{}, balance:{}, position:{}"
+                                                 .format(price, self.eth_num, self.balance, self.position))
+                    else:
+                        # 空单，买入止盈、止损
+                        if price <= self.profit_price or price >= self.stop_price:
+                            profit = self.contract_num - self.eth_num * price
+                            self.position = self.position + self.contract_num
+                            self.balance = self.balance + profit
+                            self.reset()
+
+                            if price <= self.profit_price:
+                                self.logger.info("Take profit at price:{}, ETH num:{}, balance:{}, position:{}"
+                                                 .format(price, self.eth_num, self.balance, self.position))
+
+                            if price >= self.stop_price:
+                                self.logger.info("Stop loss at price:{}, ETH num:{}, balance:{}, position:{}"
+                                                 .format(price, self.eth_num, self.balance, self.position))
+
+
 
                     if self.stop_price >= start and self.stop_price <= end:
                         # 止损，按照最低价格卖出
@@ -275,7 +295,7 @@ class Policy():
 
                     if signal == self.TREND_UP:
                         # 买入，place order
-                        buy_price = end
+                        buy_price = price
                         cost = self.contract_num / self.leverage
                         self.balance = self.balance - cost
                         self.eth_num = self.contract_num / buy_price
@@ -285,10 +305,11 @@ class Policy():
                         self.stop_price = buy_price - 0.5
                         self.is_in_trade = True
                         self.position = self.position + self.contract_num
-                        self.logger.info("Long ETH at price:{}, ETH num:{}, balance:{}, position:{}".format(buy_price, self.eth_num, self.balance, self.position))
+                        self.logger.info("Long ETH at price:{}, ETH num:{}, profit price:{}, stop price:{}, balance:{}, position:{}"
+                                         .format(buy_price, self.eth_num, self.profit_price, self.stop_price, self.balance, self.position))
                     elif signal == self.TREND_DOWN:
                         # 卖出，place order
-                        sell_price = start
+                        sell_price = price
                         cost = self.contract_num / self.leverage
                         self.balance = self.balance - cost
                         self.eth_num = self.contract_num / sell_price
@@ -298,8 +319,8 @@ class Policy():
                         self.stop_price = sell_price + 0.5
                         self.is_in_trade = True
                         self.position = self.position - self.contract_num
-                        self.logger.info(
-                            "Short ETH at price:{}, ETH num:{}, balance:{}, position:{}".format(sell_price, self.eth_num, self.contract_num, self.balance, self.position))
+                        self.logger.info("Short ETH at price:{}, ETH num:{}, profit price:{}, stop price:{}, balance:{}, position:{}"
+                                         .format(sell_price, self.eth_num, self.profit_price, self.stop_price, self.balance, self.position))
 
                 #self.logger.info("BALANCE:{}".format(self.balance))
 
