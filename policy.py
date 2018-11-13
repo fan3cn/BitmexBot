@@ -228,7 +228,7 @@ class Policy():
             end_time =start_time + datetime.timedelta(days=1)
             print("{}-{}".format(start_time, end_time))
             trades_5_min = Bitmex().get_historical_data(start_time=start_time, end_time=end_time)
-            print(trades_5_min)
+            #print(trades_5_min)
             i = 0
             j = 5
             while (j < len(trades_5_min)):
