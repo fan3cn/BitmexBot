@@ -253,35 +253,38 @@ class Policy():
                         self.balance = self.balance + profit
                         self.logger.info("Stop loss at price:{}, ETH num:{}, balance:{}".format(start, self.eth_num, self.balance))
                         self.reset()
+                else:
+                    signal = self.trade_signal()
 
-                signal = self.trade_signal()
+                    if signal == self.TREND_UP:
+                        # 买入，place order
+                        buy_price = end
+                        cost = self.contract_num / self.leverage
+                        self.balance = self.balance - cost
+                        self.eth_num = self.contract_num / buy_price
 
-                if signal == self.TREND_UP:
-                    # 买入，place order
-                    buy_price = end
-                    cost = self.contract_num / self.leverage
-                    self.balance = self.balance - cost
-                    self.eth_num = self.contract_num / buy_price
+                        # 20倍杠杆，买入1000美元的合约，成本50刀
+                        self.profit_price = buy_price + 1.5
+                        self.stop_price = buy_price - 0.5
+                        self.is_in_trade = True
 
-                    # 20倍杠杆，买入1000美元的合约，成本50刀
-                    self.profit_price = buy_price + 1.5
-                    self.stop_price = buy_price - 0.5
-                    self.is_in_trade = True
+                        self.logger.info("Long ETH at price:{}, ETH num:{}, balance:{}".format(buy_price, self.eth_num,
+                                                                                               self.contract_num,
+                                                                                               self.balance))
+                    elif signal == self.TREND_DOWN:
+                        # 卖出，place order
+                        sell_price = start
+                        cost = self.contract_num / self.leverage
+                        self.balance = self.balance - cost
+                        self.eth_num = self.contract_num / sell_price
 
-                    self.logger.info("Long ETH at price:{}, ETH num:{}, balance:{}".format(buy_price, self.eth_num, self.contract_num, self.balance))
-
-                elif signal == self.TREND_DOWN:
-                    # 卖出，place order
-                    sell_price = start
-                    cost = self.contract_num / self.leverage
-                    self.balance = self.balance - cost
-                    self.eth_num = self.contract_num / sell_price
-
-                    # 20倍杠杆，买入1000美元的合约，成本50刀
-                    self.profit_price = sell_price - 1.5
-                    self.stop_price = sell_price + 0.5
-                    self.is_in_trade = True
-                    self.logger.info("Short ETH at price:{}, ETH num:{}, balance:{}".format(sell_price, self.eth_num, self.contract_num, self.balance))
+                        # 20倍杠杆，买入1000美元的合约，成本50刀
+                        self.profit_price = sell_price - 1.5
+                        self.stop_price = sell_price + 0.5
+                        self.is_in_trade = True
+                        self.logger.info(
+                            "Short ETH at price:{}, ETH num:{}, balance:{}".format(sell_price, self.eth_num,
+                                                                                   self.contract_num, self.balance))
 
                 self.logger.info("BALANCE:{}".format(self.balance))
 
