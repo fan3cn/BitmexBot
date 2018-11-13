@@ -1,6 +1,7 @@
 import logging
 import datetime
 from time import sleep
+import time
 from bitmex_bot.bitmex_historical import Bitmex
 
 class Policy():
@@ -35,7 +36,12 @@ class Policy():
         # keep 30 days data
         self.trades_1_day = []
 
-        self.run()
+        self.last_exe_time = 0
+
+    def fetch_historical_data(self):
+        if time.time() - self.last_exe_time > 2 * 60 * 1000:
+            self.trades_5_min = Bitmex().get_historical_data(tick='5m', count=6)
+        self.last_exe_time = time.time()
 
     def run(self):
         self.logger.info("Policy running...")
