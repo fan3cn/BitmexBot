@@ -35,6 +35,8 @@ class Policy():
         # keep 30 days data
         self.trades_1_day = []
 
+        self.run()
+
     def run(self):
         self.logger.info("Policy running...")
         while(True):
@@ -50,9 +52,9 @@ class Policy():
             #
             # self.trades_1_day = Bitmex().get_historical_data(tick='1d', count=30)
             # print(self.trades_1_day)
-            self.trade_signal()
+            #self.trade_signal()
 
-            sleep(60)
+            sleep(120)
 
     def down(self, trade):
         return  self.open(trade) > self.close(trade)
