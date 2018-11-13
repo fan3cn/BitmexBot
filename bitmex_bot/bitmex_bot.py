@@ -177,7 +177,7 @@ class OrderManager:
         logger.info("-------------------------------------------------------------")
         logger.info("Starting Bot......")
         self.policy = Policy()
-        self.trade_signal = self.policy.trade_signal()
+        #self.trade_signal = self.policy.trade_signal()
         # price at which bot enters first order
         self.last_price = 0
         # to store current prices for per bot run
@@ -276,6 +276,7 @@ class OrderManager:
         # print(self.exchange.get_orders())
         logger.info("current BITMEX price is {}".format(self.last_price))
         # self.get_exchange_price()
+        self.policy.fetch_historical_data()
 
         signal = self.policy.trade_signal()
 
