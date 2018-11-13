@@ -206,12 +206,23 @@ class Policy():
                                  self.trade_volume(trade), localtime))
 
     # 使用历史数据测试
-    def test(self):
+    def simulate(self):
         self.logger.info("Policy test running...")
 
         # start from 8/4 to 11/1
         UTC_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
         start_time = datetime.datetime.strptime('2018-08-04T00:00:00.000Z', UTC_FORMAT)
+
+        # 1000美元
+        self.balance = 1000
+        self.contract_num = 1000
+        self.leverage = 10
+
+        self.is_in_trade = False
+        self.profit_price = 0
+        self.stop_price = 0
+        self.eth_num = 0
+
         for d in range(4 * 30):
             end_time =start_time + datetime.timedelta(days=1)
             print("{}-{}".format(start_time, end_time))
@@ -220,9 +231,59 @@ class Policy():
             i = 0
             j = 5
             while (j < len(trades_5_min)):
-
                 self.trades_5_min = trades_5_min[i:j][::-1]
-                self.trade_signal()
+                close = float(self.trades_5_min[0]['close'])
+                open = float(self.trades_5_min[0]['open'])
+
+                start = open if open <= close else close
+                end = close if open > close else open
+
+                if self.is_in_trade:
+                    #持单中，检查止盈止损
+                    if self.profit_price >= start and self.profit_price <= end:
+                        # 止盈，按照最低价格卖出
+                        profit = self.eth_num * start - self.contract_num
+                        self.balance = self.balance + profit
+                        self.logger.info("Limit profit at price:{}, ETH num:{}, balance:{}".format(start, self.eth_num, self.balance))
+                        self.reset()
+
+                    if self.stop_price >= start and self.stop_price <= end:
+                        # 止损，按照最低价格卖出
+                        profit = self.eth_num * start - self.contract_num
+                        self.balance = self.balance + profit
+                        self.logger.info("Stop loss at price:{}, ETH num:{}, balance:{}".format(start, self.eth_num, self.balance))
+                        self.reset()
+
+                signal = self.trade_signal()
+
+                if signal == self.TREND_UP:
+                    # 买入，place order
+                    buy_price = end
+                    cost = self.contract_num / self.leverage
+                    self.balance = self.balance - cost
+                    self.eth_num = self.contract_num / buy_price
+
+                    # 20倍杠杆，买入1000美元的合约，成本50刀
+                    self.profit_price = buy_price + 1.5
+                    self.stop_price = buy_price - 0.5
+                    self.is_in_trade = True
+
+                    self.logger.info("Long ETH at price:{}, ETH num:{}, balance:{}".format(buy_price, self.eth_num, self.contract_num, self.balance))
+
+                elif signal == self.TREND_DOWN:
+                    # 卖出，place order
+                    sell_price = start
+                    cost = self.contract_num / self.leverage
+                    self.balance = self.balance - cost
+                    self.eth_num = self.contract_num / sell_price
+
+                    # 20倍杠杆，买入1000美元的合约，成本50刀
+                    self.profit_price = sell_price - 1.5
+                    self.stop_price = sell_price + 0.5
+                    self.is_in_trade = True
+                    self.logger.info("Short ETH at price:{}, ETH num:{}, balance:{}".format(sell_price, self.eth_num, self.contract_num, self.balance))
+
+                self.logger.info("BALANCE:{}".format(self.balance))
 
                 i += 1
                 j += 1
@@ -231,6 +292,11 @@ class Policy():
 
             start_time = end_time
 
+    def reset(self):
+        self.is_in_trade = False
+        self.profit_price = 0
+        self.stop_price = 0
+        self.eth_num = 0
 
 if __name__ == "__main__":
     #print("Policy starts....")
@@ -251,7 +317,7 @@ if __name__ == "__main__":
 
     p = Policy()
     p.logger = logger
-    p.test()
+    p.simulate()
 
 
 
