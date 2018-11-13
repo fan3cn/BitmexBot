@@ -67,6 +67,8 @@ class Policy():
         return float(trade['volume'])
 
     def trade_volume_ratio(self, trade, p_trade):
+        if self.trade_volume(p_trade) <= 0:
+            return 0
         return self.trade_volume(trade) / self.trade_volume(p_trade)
 
     def open(self, trade):
@@ -207,13 +209,14 @@ class Policy():
     def test(self):
         self.logger.info("Policy test running...")
 
-        # start from 7/1 to 11/1
+        # start from 8/4 to 11/1
         UTC_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
-        start_time = datetime.datetime.strptime('2018-07-01T00:00:000Z', UTC_FORMAT)
+        start_time = datetime.datetime.strptime('2018-08-04T00:00:00.000Z', UTC_FORMAT)
         for d in range(4 * 30):
             end_time =start_time + datetime.timedelta(days=1)
+            print("{}-{}".format(start_time, end_time))
             trades_5_min = Bitmex().get_historical_data(start_time=start_time, end_time=end_time)
-
+            print(trades_5_min)
             i = 0
             j = 5
             while (j < len(trades_5_min)):
@@ -224,7 +227,7 @@ class Policy():
                 i += 1
                 j += 1
 
-                sleep(1)
+                #sleep(1)
 
             start_time = end_time
 
@@ -240,6 +243,12 @@ if __name__ == "__main__":
     # add formatter to ch
     ch.setFormatter(formatter)
     logger.addHandler(ch)
+    
+    fh = logging.FileHandler('test.log')
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+
     p = Policy()
     p.logger = logger
     p.test()
