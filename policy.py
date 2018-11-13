@@ -39,10 +39,10 @@ class Policy():
         self.logger.info("Policy running...")
         while(True):
 
-            self.trades_1_min = Bitmex().get_historical_data(count=360)
+            #self.trades_1_min = Bitmex().get_historical_data(count=360)
             #print(self.trades_1_min)
 
-            self.trades_5_min = Bitmex().get_historical_data(tick='5m', count=288)
+            self.trades_5_min = Bitmex().get_historical_data(tick='5m', count=6)
             #print(self.trades_5_min)
 
             # self.trades_1_hour = Bitmex().get_historical_data(tick='1h', count=120)
@@ -52,7 +52,7 @@ class Policy():
             # print(self.trades_1_day)
             self.trade_signal()
 
-            sleep(5)
+            sleep(60)
 
     def down(self, trade):
         return  self.open(trade) > self.close(trade)
