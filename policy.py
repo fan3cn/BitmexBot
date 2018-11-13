@@ -249,7 +249,6 @@ class Policy():
                             profit = self.eth_num * price - self.contract_num
                             self.position = self.position - self.contract_num
                             self.balance = self.balance + profit
-                            self.reset()
 
                             if price >= self.profit_price:
                                 self.logger.info("Take profit at price:{}, ETH num:{}, balance:{}, position:{}"
@@ -258,13 +257,15 @@ class Policy():
                             if price <= self.stop_price:
                                 self.logger.info("Stop loss at price:{}, ETH num:{}, balance:{}, position:{}"
                                                  .format(price, self.eth_num, self.balance, self.position))
+
+                            self.reset()
                     else:
                         # 空单，买入止盈、止损
                         if price <= self.profit_price or price >= self.stop_price:
                             profit = self.contract_num - self.eth_num * price
                             self.position = self.position + self.contract_num
                             self.balance = self.balance + profit
-                            self.reset()
+
 
                             if price <= self.profit_price:
                                 self.logger.info("Take profit at price:{}, ETH num:{}, balance:{}, position:{}"
@@ -273,6 +274,8 @@ class Policy():
                             if price >= self.stop_price:
                                 self.logger.info("Stop loss at price:{}, ETH num:{}, balance:{}, position:{}"
                                                  .format(price, self.eth_num, self.balance, self.position))
+
+                            self.reset()
                 else:
                     signal = self.trade_signal()
 
