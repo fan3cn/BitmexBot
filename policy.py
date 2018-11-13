@@ -180,7 +180,7 @@ class Policy():
 
     def trade_signal(self):
 
-        self.format_OHLC_log(self.trades_5_min[0])
+        #self.format_OHLC_log(self.trades_5_min[0])
 
         r1 = self.rule_1()
         if r1 > self.TREND_FLAT:
@@ -223,6 +223,7 @@ class Policy():
         self.stop_price = 0
         self.eth_num = 0
         self.position = 0
+        self.margin = 0
 
         for d in range(4 * 30):
             end_time =start_time + datetime.timedelta(days=1)
@@ -231,6 +232,11 @@ class Policy():
             #print(trades_5_min)
             i = 0
             j = 5
+
+            if self.balance <= 0:
+                self.logger.info("Congratulations, you go bankrupt ^v^")
+                break
+
             while (j < len(trades_5_min)):
                 self.trades_5_min = trades_5_min[i:j][::-1]
                 close = float(self.trades_5_min[0]['close'])
@@ -248,7 +254,9 @@ class Policy():
                         if price >= self.profit_price or price <= self.stop_price:
                             profit = self.eth_num * price - self.contract_num
                             self.position = self.position - self.contract_num
-                            self.balance = self.balance + profit
+
+                            self.margin = self.margin + profit
+                            self.balance = self.balance + self.margin
 
                             if price >= self.profit_price:
                                 self.logger.info("Take profit at price:{}, ETH num:{}, balance:{}, position:{}"
@@ -264,8 +272,9 @@ class Policy():
                         if price <= self.profit_price or price >= self.stop_price:
                             profit = self.contract_num - self.eth_num * price
                             self.position = self.position + self.contract_num
-                            self.balance = self.balance + profit
 
+                            self.margin = self.margin + profit
+                            self.balance = self.balance + self.margin
 
                             if price <= self.profit_price:
                                 self.logger.info("Take profit at price:{}, ETH num:{}, balance:{}, position:{}"
@@ -282,8 +291,8 @@ class Policy():
                     if signal == self.TREND_UP:
                         # 买入，place order
                         buy_price = price
-                        cost = self.contract_num / self.leverage
-                        self.balance = self.balance - cost
+                        self.margin = self.contract_num / self.leverage
+                        self.balance = self.balance - self.margin
                         self.eth_num = self.contract_num / buy_price
 
                         # 20倍杠杆，买入1000美元的合约，成本50刀
@@ -296,8 +305,8 @@ class Policy():
                     elif signal == self.TREND_DOWN:
                         # 卖出，place order
                         sell_price = price
-                        cost = self.contract_num / self.leverage
-                        self.balance = self.balance - cost
+                        self.margin = self.contract_num / self.leverage
+                        self.balance = self.balance - self.margin
                         self.eth_num = self.contract_num / sell_price
 
                         # 20倍杠杆，买入1000美元的合约，成本50刀
@@ -322,6 +331,7 @@ class Policy():
         self.profit_price = 0
         self.stop_price = 0
         self.eth_num = 0
+        self.margin = 0
 
 if __name__ == "__main__":
     #print("Policy starts....")
