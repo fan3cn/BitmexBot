@@ -37,7 +37,7 @@ class BitMEXWebsocket():
     def __del__(self):
         self.exit()
 
-    def connect(self, endpoint="", symbol="XBTN15", shouldAuth=True):
+    def connect(self, endpoint="", symbol="XBTUSD", shouldAuth=True):
         '''Connect to the websocket and initialize data stores.'''
 
         self.logger.debug("Connecting WebSocket.")
@@ -330,5 +330,6 @@ if __name__ == "__main__":
     ws.logger = logger
     ws.connect("https://testnet.bitmex.com/api/v1")
     while(ws.ws.sock.connected):
+
         sleep(1)
 
