@@ -215,8 +215,10 @@ class Policy():
 
         # 1000美元
         self.balance = 1000
-        self.contract_num = 1000
-        self.leverage = 10
+        self.leverage = 50
+        self.contract_num = self.balance * self.leverage * 0.5
+        #self.contract_num = 3000
+        #self.leverage = 50
 
         self.is_in_trade = False
         self.profit_price = 0
@@ -296,7 +298,7 @@ class Policy():
                         self.eth_num = self.contract_num / buy_price
 
                         # 20倍杠杆，买入1000美元的合约，成本50刀
-                        self.profit_price = buy_price + 1.5
+                        self.profit_price = buy_price + 2
                         self.stop_price = buy_price - 0.5
                         self.is_in_trade = True
                         self.position = self.position + self.contract_num
@@ -310,7 +312,7 @@ class Policy():
                         self.eth_num = self.contract_num / sell_price
 
                         # 20倍杠杆，买入1000美元的合约，成本50刀
-                        self.profit_price = sell_price - 1.5
+                        self.profit_price = sell_price - 2.5
                         self.stop_price = sell_price + 0.5
                         self.is_in_trade = True
                         self.position = self.position - self.contract_num
