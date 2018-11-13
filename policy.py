@@ -216,7 +216,9 @@ class Policy():
         # 1000美元
         self.balance = 1000
         self.leverage = 50
+        self.fee_ratio = 0.00075
         self.contract_num = self.balance * self.leverage * 0.5
+        self.fee = self.contract_num * self.fee_ratio
         #self.contract_num = 3000
         #self.leverage = 50
 
@@ -244,6 +246,10 @@ class Policy():
                 close = float(self.trades_5_min[0]['close'])
                 open = float(self.trades_5_min[0]['open'])
 
+                if self.balance <= 0:
+                    self.logger.info("Congratulations, you go bankrupt ^v^")
+                    break
+
                 #start = open if open <= close else close
                 #end = close if open > close else open
 
@@ -258,7 +264,7 @@ class Policy():
                             self.position = self.position - self.contract_num
 
                             self.margin = self.margin + profit
-                            self.balance = self.balance + self.margin
+                            self.balance = self.balance + self.margin - self.fee
 
                             if price >= self.profit_price:
                                 self.logger.info("Take profit at price:{}, ETH num:{}, balance:{}, position:{}"
@@ -276,7 +282,7 @@ class Policy():
                             self.position = self.position + self.contract_num
 
                             self.margin = self.margin + profit
-                            self.balance = self.balance + self.margin
+                            self.balance = self.balance + self.margin - self.fee
 
                             if price <= self.profit_price:
                                 self.logger.info("Take profit at price:{}, ETH num:{}, balance:{}, position:{}"
@@ -294,7 +300,7 @@ class Policy():
                         # 买入，place order
                         buy_price = price
                         self.margin = self.contract_num / self.leverage
-                        self.balance = self.balance - self.margin
+                        self.balance = self.balance - self.margin - self.fee
                         self.eth_num = self.contract_num / buy_price
 
                         # 20倍杠杆，买入1000美元的合约，成本50刀
@@ -308,7 +314,7 @@ class Policy():
                         # 卖出，place order
                         sell_price = price
                         self.margin = self.contract_num / self.leverage
-                        self.balance = self.balance - self.margin
+                        self.balance = self.balance - self.margin - self.fee
                         self.eth_num = self.contract_num / sell_price
 
                         # 20倍杠杆，买入1000美元的合约，成本50刀
