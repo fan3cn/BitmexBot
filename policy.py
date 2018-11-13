@@ -273,23 +273,6 @@ class Policy():
                             if price >= self.stop_price:
                                 self.logger.info("Stop loss at price:{}, ETH num:{}, balance:{}, position:{}"
                                                  .format(price, self.eth_num, self.balance, self.position))
-
-
-
-                    if self.stop_price >= start and self.stop_price <= end:
-                        # 止损，按照最低价格卖出
-                        if self.position > 0:
-                            # 多单，卖出止损
-                            loss = self.eth_num * start - self.contract_num
-                            self.position = self.position - self.contract_num
-                        else:
-                            # 空单，买入止损
-                            loss = self.contract_num - self.eth_num * end
-                            self.position = self.position + self.contract_num
-
-                        self.balance = self.balance + loss
-                        self.logger.info("Stop loss at price:{}, ETH num:{}, balance:{}, position:{}".format(start, self.eth_num, self.balance, self.position))
-                        self.reset()
                 else:
                     signal = self.trade_signal()
 
