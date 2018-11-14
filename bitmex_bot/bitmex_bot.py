@@ -12,7 +12,7 @@ from bitmex_bot.settings import settings
 from bitmex_bot.utils import log, constants, errors
 from bitmex_bot.bitmex_historical import Bitmex
 from policy import Policy
-
+import logging
 from bitmex_bot.bot_trade import BOT_TRADE
 
 # Used for reloading the bot - saves modified times of key files
@@ -23,8 +23,9 @@ watched_files_mtimes = [(f, getmtime(f)) for f in settings.WATCHED_FILES]
 #
 # Helpers
 #
-logger = log.setup_custom_logger('root')
 
+
+logger = log.setup_custom_logger('root')
 
 class ExchangeInterface:
     def __init__(self, dry_run=False):
@@ -44,7 +45,7 @@ class ExchangeInterface:
 
         self.bitmex = bitmex.BitMEX(base_url=url, symbol=self.symbol,
                                     apiKey=settings.API_KEY, apiSecret=settings.API_SECRET,
-                                    orderIDPrefix=settings.ORDERID_PREFIX)
+                                    orderIDPrefix=settings.ORDERID_PREFIX, leverage=settings.LEVERAGE)
 
     def cancel_order(self, order):
         tickLog = self.get_instrument()['tickLog']
@@ -177,6 +178,7 @@ class OrderManager:
         logger.info("-------------------------------------------------------------")
         logger.info("Starting Bot......")
         self.policy = Policy()
+        self.policy.logger = log.setup_OHLC_logger("policy")
         #self.trade_signal = self.policy.trade_signal()
         # price at which bot enters first order
         self.last_price = 0
@@ -218,7 +220,7 @@ class OrderManager:
         self.start_XBt = margin1["marginBalance"]
         logger.info("Current XBT Balance : %.6f" % XBt_to_XBT(self.start_XBt))
         logger.info("Contracts Traded This Run by BOT: %d" % (self.running_qty - self.starting_qty1))
-        logger.info("Total Contract Delta: %.4f XBT" % self.exchange.calc_delta()['spot'])
+        #logger.info("Total Contract Delta: %.4f XBT" % self.exchange.calc_delta()['spot'])
 
     def get_ticker(self):
         ticker = self.exchange.get_ticker()
@@ -280,9 +282,9 @@ class OrderManager:
 
         signal = self.policy.trade_signal()
 
-        logger.info("Current Price is {}, trade signal: {}".format(self.last_price, signal))
-
         position = self.exchange.get_position()
+
+        logger.info("Current Price is {}, trade signal: {}, position: {}".format(self.last_price, signal, position))
 
         if self.is_trade and position == 0:
             self.exchange.cancel_all_orders()
@@ -303,13 +305,13 @@ class OrderManager:
                 sleep(settings.API_REST_INTERVAL)
 
                 if settings.STOP_LOSS_FACTOR != "":
-                    self.place_orders(side=self.SELL, orderType='Limit', quantity=self.amount,
-                                      price=int(self.stop_price))
+                    self.place_orders(side=self.SELL, orderType='StopLimit', quantity=self.amount,
+                                      price=self.stop_price, stopPx=self.stop_price)
                     sleep(settings.API_REST_INTERVAL)
 
                 if settings.STOP_PROFIT_FACTOR != "":
                     self.place_orders(side=self.SELL, orderType='Limit', quantity=self.amount,
-                                      price=int(self.profit_price))
+                                      price=self.profit_price)
                     sleep(settings.API_REST_INTERVAL)
 
             elif signal == self.policy.TREND_DOWN:
@@ -329,12 +331,12 @@ class OrderManager:
                       format(order['price'], self.stop_price, self.profit_price))
                 sleep(settings.API_REST_INTERVAL)
                 if settings.STOP_LOSS_FACTOR != "":
-                    self.place_orders(side=self.BUY, orderType='Limit', quantity=self.amount,
-                                      price=int(self.stop_price))
+                    self.place_orders(side=self.BUY, orderType='StopLimit', quantity=self.amount,
+                                      price=self.stop_price, stopPx=self.stop_price)
                     sleep(settings.API_REST_INTERVAL)
                 if settings.STOP_PROFIT_FACTOR != "":
                     self.place_orders(side=self.BUY, orderType='Limit', quantity=self.amount,
-                                      price=int(self.profit_price))
+                                      price=self.profit_price)
                     sleep(settings.API_REST_INTERVAL)
 
     def check_file_change(self):
@@ -408,7 +410,7 @@ def run():
     # Try/except just keeps ctrl-c from printing an ugly stacktrace
     try:
         try:
-            #om.init()
+            om.init()
             om.run_loop()
         except (KeyboardInterrupt, SystemExit):
             sys.exit()
