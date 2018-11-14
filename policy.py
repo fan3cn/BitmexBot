@@ -3,6 +3,8 @@ import datetime
 from time import sleep
 import time
 from bitmex_bot.bitmex_historical import Bitmex
+from bitmex_bot.utils import log
+
 
 class Policy():
     TREND_UP = 1
@@ -25,7 +27,7 @@ class Policy():
     RULE_3_CONSECUTIVE = 5
 
     def __init__(self):
-        self.logger = logging.getLogger('Policy')
+        self.logger = logging.getLogger()
         # keep Six hours(60min * 6 = 360) data
         self.trades_1_min = []
         # keep One day(24hour*60/5 = 288) data
@@ -36,13 +38,20 @@ class Policy():
         # keep 30 days data
         self.trades_1_day = []
 
-        self.last_exe_time = 0
+        self.last_exe_time = -1
+        self.last_exe_time_log = -1
 
     def fetch_historical_data(self):
-        if time.time() - self.last_exe_time > 2 * 60 * 1000:
-            self.trades_5_min = Bitmex().get_historical_data(tick='5m', count=6)
-        self.last_exe_time = time.time()
+        if self.last_5mins() != self.last_exe_time:
+            self.trades_5_min = Bitmex().get_historical_data(tick='5m', count=6, reverse='true')
+            self.logger.info(self.trades_5_min)
+            self.last_exe_time = self.last_5mins()
+    
+    def last_5mins(self):
+        mins = datetime.datetime.now().minute
+        return mins - mins % 5
 
+    
     def run(self):
         self.logger.info("Policy running...")
         while(True):
@@ -186,9 +195,12 @@ class Policy():
         else:
             return self.TREND_FLAT
 
+    #def trade_signal(self):
+        #return 2
+
     def trade_signal(self):
 
-        #self.format_OHLC_log(self.trades_5_min[0])
+        self.format_OHLC_log(self.trades_5_min[0])
 
         r1 = self.rule_1()
         if r1 > self.TREND_FLAT:
@@ -205,6 +217,8 @@ class Policy():
         return self.TREND_FLAT
 
     def format_OHLC_log(self, trade):
+        if self.last_5mins() == self.last_exe_time_log:
+            return
         UTC_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
         UTC_TIME = datetime.datetime.strptime(trade['timestamp'], UTC_FORMAT)
         localtime = UTC_TIME + datetime.timedelta(hours=8)
@@ -212,7 +226,7 @@ class Policy():
         self.logger.info("Open:{}, High:{}, Low:{}, Close:{}, Volume:{}, ts:{}" \
                          .format(self.open(trade), trade['high'], trade['low'], self.close(trade),
                                  self.trade_volume(trade), localtime))
-
+        self.last_exe_time_log = self.last_5mins()
     # 使用历史数据测试
     def simulate(self):
         self.logger.info("Policy test running...")
@@ -348,7 +362,7 @@ class Policy():
         self.stop_price = 0
         self.eth_num = 0
         self.margin = 0
-
+    
 if __name__ == "__main__":
     #print("Policy starts....")
     # create console handler and set level to debug
@@ -369,24 +383,4 @@ if __name__ == "__main__":
     p = Policy()
     p.logger = logger
     p.simulate()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
