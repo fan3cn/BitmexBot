@@ -185,6 +185,7 @@ class OrderManager:
         # to store current prices for per bot run
         self.amount = settings.POSITION
         self.is_trade = False
+        self.order_price = 0
         self.stop_price = 0
         self.profit_price = 0
         logger.info("Using symbol %s." % self.exchange.symbol)
@@ -219,7 +220,7 @@ class OrderManager:
         self.running_qty = self.exchange.get_delta()
         self.start_XBt = margin1["marginBalance"]
         logger.info("Current XBT Balance : %.6f" % XBt_to_XBT(self.start_XBt))
-        logger.info("Contracts Traded This Run by BOT: %d" % (self.running_qty - self.starting_qty1))
+        #logger.info("Contracts Traded This Run by BOT: %d" % (self.running_qty - self.starting_qty1))
         #logger.info("Total Contract Delta: %.4f XBT" % self.exchange.calc_delta()['spot'])
 
     def get_ticker(self):
@@ -275,9 +276,9 @@ class OrderManager:
         self.exchange.check_market_open()
 
         self.get_exchange_price()
-        # print(self.exchange.get_orders())
-        logger.info("current BITMEX price is {}".format(self.last_price))
-        # self.get_exchange_price()
+
+        #logger.info("current BITMEX price is {}".format(self.last_price))
+
         self.policy.fetch_historical_data()
 
         signal = self.policy.trade_signal()
@@ -289,6 +290,13 @@ class OrderManager:
         if self.is_trade and position == 0:
             self.exchange.cancel_all_orders()
             self.is_trade = False
+            self.order_price = 0
+            self.stop_price = 0
+            self.profit_price = 0
+
+        if position != 0:
+            logger.info("Holding position {}, \tOrder price {} \tStop Price {} \tProfit Price {} ".
+                        format(position, self.order_price, self.stop_price, self.profit_price))
 
         if not self.is_trade:
             if signal == self.policy.TREND_UP:
@@ -300,13 +308,15 @@ class OrderManager:
                     self.profit_price = order['price'] + settings.STOP_PROFIT_FACTOR
                 if settings.STOP_LOSS_FACTOR != "":
                     self.stop_price = order['price'] - settings.STOP_LOSS_FACTOR
-                print("Order price {} \tStop Price {} \tProfit Price {} ".
+
+                self.order_price = order['price']
+                logger.info("Order price {} \tStop Price {} \tProfit Price {} ".
                       format(order['price'], self.stop_price, self.profit_price))
                 sleep(settings.API_REST_INTERVAL)
 
                 if settings.STOP_LOSS_FACTOR != "":
                     self.place_orders(side=self.SELL, orderType='StopLimit', quantity=self.amount,
-                                      price=self.stop_price, stopPx=self.stop_price)
+                                      price=self.stop_price, stopPx=self.stop_price + 0.1)
                     sleep(settings.API_REST_INTERVAL)
 
                 if settings.STOP_PROFIT_FACTOR != "":
@@ -327,12 +337,14 @@ class OrderManager:
                 if settings.STOP_LOSS_FACTOR != "":
                     self.stop_price = order['price'] + settings.STOP_LOSS_FACTOR
 
-                print("Order price {} \tStop Price {} \tProfit Price {} ".
+                self.order_price = order['price']
+
+                logger.info("Order price {} \tStop Price {} \tProfit Price {} ".
                       format(order['price'], self.stop_price, self.profit_price))
                 sleep(settings.API_REST_INTERVAL)
                 if settings.STOP_LOSS_FACTOR != "":
                     self.place_orders(side=self.BUY, orderType='StopLimit', quantity=self.amount,
-                                      price=self.stop_price, stopPx=self.stop_price)
+                                      price=self.stop_price, stopPx=self.stop_price - 0.1)
                     sleep(settings.API_REST_INTERVAL)
                 if settings.STOP_PROFIT_FACTOR != "":
                     self.place_orders(side=self.BUY, orderType='Limit', quantity=self.amount,
@@ -365,6 +377,8 @@ class OrderManager:
         while True:
             sys.stdout.write("-----\n")
             sys.stdout.flush()
+
+            logger.info("--------------------")
 
             self.check_file_change()
             sleep(settings.LOOP_INTERVAL)
