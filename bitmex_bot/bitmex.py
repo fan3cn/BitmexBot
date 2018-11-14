@@ -239,7 +239,7 @@ class BitMEX(object):
 
     @authentication_required
     def set_leverage(self):
-        path = "/position/leverage"
+        path = "position/leverage"
         postdict = {
             'symbol': self.symbol,
             'leverage': self.leverage
