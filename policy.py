@@ -1,9 +1,8 @@
 import logging
 import datetime
 from time import sleep
-import time
 from bitmex_bot.bitmex_historical import Bitmex
-from bitmex_bot.utils import log
+from bitmex_bot.utils.util import last_5mins
 
 
 class Policy():
@@ -42,16 +41,11 @@ class Policy():
         self.last_exe_time_log = -1
 
     def fetch_historical_data(self):
-        if self.last_5mins() != self.last_exe_time:
+        if last_5mins() != self.last_exe_time:
             self.trades_5_min = Bitmex().get_historical_data(tick='5m', count=6, reverse='true')
             self.logger.info(self.trades_5_min)
-            self.last_exe_time = self.last_5mins()
-    
-    def last_5mins(self):
-        mins = datetime.datetime.now().minute
-        return mins - mins % 5
+            self.last_exe_time = last_5mins()
 
-    
     def run(self):
         self.logger.info("Policy running...")
         while(True):
@@ -217,7 +211,7 @@ class Policy():
         return self.TREND_FLAT
 
     def format_OHLC_log(self, trade):
-        if self.last_5mins() == self.last_exe_time_log:
+        if last_5mins() == self.last_exe_time_log:
             return
         UTC_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
         UTC_TIME = datetime.datetime.strptime(trade['timestamp'], UTC_FORMAT)
@@ -226,7 +220,7 @@ class Policy():
         self.logger.info("Open:{}, High:{}, Low:{}, Close:{}, Volume:{}, ts:{}" \
                          .format(self.open(trade), trade['high'], trade['low'], self.close(trade),
                                  self.trade_volume(trade), localtime))
-        self.last_exe_time_log = self.last_5mins()
+        self.last_exe_time_log = last_5mins()
     # 使用历史数据测试
     def simulate(self):
         self.logger.info("Policy test running...")

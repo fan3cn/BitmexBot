@@ -7,3 +7,7 @@ try:
 except Exception as e:
     # git not available, ignore
     pass
+# 账户内的初始余额
+INITIAL_BALANCE = 0.015
+# 账户余额小于一半时，停止程序
+STOP_BALANCE_RATIO = 0.5

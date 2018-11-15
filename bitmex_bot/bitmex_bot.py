@@ -14,6 +14,7 @@ from bitmex_bot.bitmex_historical import Bitmex
 from policy import Policy
 import logging
 from bitmex_bot.bot_trade import BOT_TRADE
+from bitmex_bot.utils.util import last_5mins
 
 # Used for reloading the bot - saves modified times of key files
 import os
@@ -269,36 +270,38 @@ class OrderManager:
 
     def sanity_check(self):
         """Perform checks before placing orders."""
-
+        # Check if we stop
+        self.check_if_stop()
         # Check if OB is empty - if so, can't quote.
         self.exchange.check_if_orderbook_empty()
         # Ensure market is still open.
         self.exchange.check_market_open()
-
+        # Get latest trade price
         self.get_exchange_price()
-
-        #logger.info("current BITMEX price is {}".format(self.last_price))
-
+        # Fetch the last 5 min trade data
         self.policy.fetch_historical_data()
+        # Get trade signal
+        self.signal = self.policy.trade_signal()
+        # Current open position
+        self.position = self.exchange.get_position()
 
-        signal = self.policy.trade_signal()
-
-        position = self.exchange.get_position()
-
-        logger.info("Current Price is {}, trade signal: {}, position: {}".format(self.last_price, signal, position))
-
-        if self.is_trade and position == 0:
+        logger.info("Current Price is {}, trade signal: {}, position: {}".format(self.last_price, signal, self.position))
+        # Last order is executed, cancel all orders(StopLimit/Limit)
+        if self.is_trade and self.position == 0:
             self.exchange.cancel_all_orders()
             self.is_trade = False
             self.order_price = 0
             self.stop_price = 0
             self.profit_price = 0
+            self.last_order_min = -1
+            #self.last_order_direction = self.policy.TREND_FLAT
 
-        if position != 0:
+        # Logging open position info
+        if self.position != 0:
             logger.info("Holding position {}, \tOrder price {} \tStop Price {} \tProfit Price {} ".
-                        format(position, self.order_price, self.stop_price, self.profit_price))
+                        format(self.position, self.order_price, self.stop_price, self.profit_price))
 
-        if not self.is_trade:
+        if self.check_if_order() :
             if signal == self.policy.TREND_UP:
                 logger.info("Buy Trade Signal {}".format(self.last_price))
                 logger.info("-----------------------------------------")
@@ -308,21 +311,32 @@ class OrderManager:
                     self.profit_price = order['price'] + settings.STOP_PROFIT_FACTOR
                 if settings.STOP_LOSS_FACTOR != "":
                     self.stop_price = order['price'] - settings.STOP_LOSS_FACTOR
-
+                # Long
+                self.last_order_direction = self.policy.TREND_UP
                 self.order_price = order['price']
                 logger.info("Order price {} \tStop Price {} \tProfit Price {} ".
                       format(order['price'], self.stop_price, self.profit_price))
                 sleep(settings.API_REST_INTERVAL)
 
                 if settings.STOP_LOSS_FACTOR != "":
-                    self.place_orders(side=self.SELL, orderType='StopLimit', quantity=self.amount,
-                                      price=self.stop_price, stopPx=self.stop_price + 0.1)
+                    #
+                    # A Stop Market order. Specify an orderQty and stopPx.
+                    # When the stopPx is reached, the order will be entered into the book.
+                    # On sell orders, the order will trigger if the triggering price is lower than the stopPx.
+                    # On buys, higher.
+                    # Note: Stop orders do not consume margin until triggered. Be sure that the required margin is available in your account so that it may trigger fully.
+                    # Close Stops don't require an orderQty. See Execution Instructions below.
+                    self.place_orders(side=self.SELL, orderType='Stop', quantity=self.amount,
+                                      stopPx=self.stop_price)
                     sleep(settings.API_REST_INTERVAL)
 
                 if settings.STOP_PROFIT_FACTOR != "":
                     self.place_orders(side=self.SELL, orderType='Limit', quantity=self.amount,
                                       price=self.profit_price)
                     sleep(settings.API_REST_INTERVAL)
+
+                self.last_order_min = last_5mins()
+
 
             elif signal == self.policy.TREND_DOWN:
                 logger.info("Sell Trade Signal {}".format(self.last_price))
@@ -337,19 +351,36 @@ class OrderManager:
                 if settings.STOP_LOSS_FACTOR != "":
                     self.stop_price = order['price'] + settings.STOP_LOSS_FACTOR
 
+                self.last_order_direction = self.policy.TREND_DOWN
                 self.order_price = order['price']
 
                 logger.info("Order price {} \tStop Price {} \tProfit Price {} ".
                       format(order['price'], self.stop_price, self.profit_price))
                 sleep(settings.API_REST_INTERVAL)
                 if settings.STOP_LOSS_FACTOR != "":
-                    self.place_orders(side=self.BUY, orderType='StopLimit', quantity=self.amount,
-                                      price=self.stop_price, stopPx=self.stop_price - 0.1)
+                    self.place_orders(side=self.BUY, orderType='Stop', quantity=self.amount,
+                                      stopPx=self.stop_price)
                     sleep(settings.API_REST_INTERVAL)
                 if settings.STOP_PROFIT_FACTOR != "":
                     self.place_orders(side=self.BUY, orderType='Limit', quantity=self.amount,
                                       price=self.profit_price)
                     sleep(settings.API_REST_INTERVAL)
+
+                self.last_order_min = last_5mins()
+
+    def check_if_stop(self):
+        ratio = XBt_to_XBT(self.start_XBt)/constants.INITIAL_BALANCE
+        if ratio <= constants.STOP_BALANCE_RATIO:
+            raise errors.HugeLossError("U have lost {}% of the initial fund, we stop here.".format(constants.STOP_BALANCE_RATIO * 100))
+        else:
+            ROE = (XBt_to_XBT(self.start_XBt) - constants.INITIAL_BALANCE) / constants.INITIAL_BALANCE
+            logger.info("ROE:{}%".format(ROE*100))
+
+    # 检查当前时间是否适合开单
+    def check_if_order(self):
+        # 不能在同一个5分钟内连续开单
+        # 判断是否下单错误
+        return not self.is_trade and self.position == 0 and last_5mins() != self.last_order_min
 
     def check_file_change(self):
         """Restart if any files we're watching have changed."""

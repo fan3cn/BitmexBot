@@ -6,3 +6,5 @@ class MarketClosedError(Exception):
 
 class MarketEmptyError(Exception):
     pass
+class HugeLossError(Exception):
+    pass
