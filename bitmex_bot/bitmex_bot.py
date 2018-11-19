@@ -225,11 +225,11 @@ class OrderManager:
         self.running_qty = self.exchange.get_delta()
         self.start_XBt = margin1["marginBalance"]
 
-        ratio = XBt_to_XBT(self.start_XBt) / constants.INITIAL_BALANCE
-        if ratio <= constants.STOP_BALANCE_RATIO:
+        ratio = XBt_to_XBT(self.start_XBt) / settings.INITIAL_BALANCE
+        if ratio <= settings.STOP_BALANCE_RATIO:
             raise errors.HugeLossError(
-                "U have lost {}% of the initial fund, we stop here.".format(constants.STOP_BALANCE_RATIO * 100))
-        ROE = (XBt_to_XBT(self.start_XBt) - constants.INITIAL_BALANCE) / constants.INITIAL_BALANCE
+                "U have lost {}% of the initial fund, we stop here.".format(settings.STOP_BALANCE_RATIO * 100))
+        ROE = (XBt_to_XBT(self.start_XBt) - settings.INITIAL_BALANCE) / settings.INITIAL_BALANCE
         logger.info("Current XBT Balance : %.6f, ROE : %.3f%%" % XBt_to_XBT(self.start_XBt), ROE)
 
         # logger.info("Contracts Traded This Run by BOT: %d" % (self.running_qty - self.starting_qty1))
@@ -379,15 +379,6 @@ class OrderManager:
                     sleep(settings.API_REST_INTERVAL)
 
                 self.last_order_min = last_5mins()
-
-    def check_if_stop(self):
-        ratio = XBt_to_XBT(self.start_XBt) / constants.INITIAL_BALANCE
-        if ratio <= constants.STOP_BALANCE_RATIO:
-            raise errors.HugeLossError(
-                "U have lost {}% of the initial fund, we stop here.".format(constants.STOP_BALANCE_RATIO * 100))
-        else:
-            ROE = (XBt_to_XBT(self.start_XBt) - constants.INITIAL_BALANCE) / constants.INITIAL_BALANCE
-            logger.info("ROE:{}%".format(ROE * 100))
 
     # 检查当前时间是否适合开单
     def check_if_order(self):
