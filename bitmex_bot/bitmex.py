@@ -153,7 +153,7 @@ class BitMEX(object):
     @authentication_required
     def place_order(self, **kwargs):
         """Place an order."""
-        if kwargs['orderType'] != "Market":
+        if kwargs['orderType'] not in ["Market", "Stop"]:
             if kwargs['price'] < 0:
                 raise Exception("Price must be positive.")
 
@@ -166,10 +166,11 @@ class BitMEX(object):
             'clOrdID': clOrdID,
             'orderType': kwargs['orderType']
         }
-        if kwargs['orderType'] != "Market":
+        if kwargs['orderType'] not in ["Market", "Stop"]:
             postdict.update({'price': kwargs['price']})
-            if kwargs['orderType'] in ['StopLimit', 'LimitIfTouched']:
-                postdict.update({'stopPx': kwargs['stopPx']})
+
+        if kwargs['orderType'] in ['StopLimit', 'LimitIfTouched','Stop']:
+            postdict.update({'stopPx': kwargs['stopPx']})
 
         return self._curl_bitmex(path=endpoint, postdict=postdict, verb="POST")
 
