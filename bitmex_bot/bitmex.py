@@ -62,20 +62,6 @@ class BitMEX(object):
             symbol = self.symbol
         return self.ws.get_ticker(symbol)
 
-    def instrument(self, symbol):
-        """Get an instrument's details."""
-        return self.ws.get_instrument(symbol)
-
-    def instruments(self, filter=None):
-        query = {}
-        if filter is not None:
-            query['filter'] = json.dumps(filter)
-        return self._curl_bitmex(path='instrument', query=query, verb='GET')
-
-    def market_depth(self, symbol):
-        """Get market depth / orderbook."""
-        return self.ws.market_depth(symbol)
-
     def recent_trades(self):
         """Get recent trades.
 
@@ -89,6 +75,20 @@ class BitMEX(object):
 
         """
         return self.ws.recent_trades()
+
+    def instrument(self, symbol):
+        """Get an instrument's details."""
+        return self.ws.get_instrument(symbol)
+
+    def instruments(self, filter=None):
+        query = {}
+        if filter is not None:
+            query['filter'] = json.dumps(filter)
+        return self._curl_bitmex(path='instrument', query=query, verb='GET')
+
+    def market_depth(self, symbol):
+        """Get market depth / orderbook."""
+        return self.ws.market_depth(symbol)
 
     #
     # Authentication required methods

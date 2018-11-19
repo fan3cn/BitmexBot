@@ -28,6 +28,7 @@ watched_files_mtimes = [(f, getmtime(f)) for f in settings.WATCHED_FILES]
 
 logger = log.setup_custom_logger('root')
 
+
 class ExchangeInterface:
     def __init__(self, dry_run=False):
         self.dry_run = dry_run
@@ -165,6 +166,7 @@ class ExchangeInterface:
     def set_leverage(self):
         return self.bitmex.set_leverage()
 
+
 class OrderManager:
     UP = "up"
     DOWN = "down"
@@ -180,7 +182,7 @@ class OrderManager:
         logger.info("Starting Bot......")
         self.policy = Policy()
         self.policy.logger = log.setup_OHLC_logger("policy")
-        #self.trade_signal = self.policy.trade_signal()
+        # self.trade_signal = self.policy.trade_signal()
         # price at which bot enters first order
         self.last_price = 0
         # to store current prices for per bot run
@@ -211,7 +213,6 @@ class OrderManager:
 
     def reset(self):
         self.exchange.cancel_all_orders()
-        self.print_status()
         self.sanity_check()
         self.print_status()
         if settings.DRY_RUN:
@@ -223,9 +224,16 @@ class OrderManager:
         margin1 = self.exchange.get_margin()
         self.running_qty = self.exchange.get_delta()
         self.start_XBt = margin1["marginBalance"]
-        logger.info("Current XBT Balance : %.6f" % XBt_to_XBT(self.start_XBt))
-        #logger.info("Contracts Traded This Run by BOT: %d" % (self.running_qty - self.starting_qty1))
-        #logger.info("Total Contract Delta: %.4f XBT" % self.exchange.calc_delta()['spot'])
+
+        ratio = XBt_to_XBT(self.start_XBt) / constants.INITIAL_BALANCE
+        if ratio <= constants.STOP_BALANCE_RATIO:
+            raise errors.HugeLossError(
+                "U have lost {}% of the initial fund, we stop here.".format(constants.STOP_BALANCE_RATIO * 100))
+        ROE = (XBt_to_XBT(self.start_XBt) - constants.INITIAL_BALANCE) / constants.INITIAL_BALANCE
+        logger.info("Current XBT Balance : %.6f, ROE : %.3f%%" % XBt_to_XBT(self.start_XBt), ROE)
+
+        # logger.info("Contracts Traded This Run by BOT: %d" % (self.running_qty - self.starting_qty1))
+        # logger.info("Total Contract Delta: %.4f XBT" % self.exchange.calc_delta()['spot'])
 
     def get_ticker(self):
         ticker = self.exchange.get_ticker()
@@ -237,8 +245,8 @@ class OrderManager:
 
     def place_orders(self, **kwargs):
         """Create order items for use in convergence."""
-        if settings.DRY_RUN == 1:
-            logger.info("You are in DRY_RUN mode, skip placing order...")
+        if not settings.PLACE_ORDER:
+            logger.info("You are NOT in PLACE_ORDER mode, skip placing order...")
             return
         return self.exchange.place_order(**kwargs)
 
@@ -276,8 +284,6 @@ class OrderManager:
 
     def sanity_check(self):
         """Perform checks before placing orders."""
-        # Check if we stop
-        self.check_if_stop()
         # Check if OB is empty - if so, can't quote.
         self.exchange.check_if_orderbook_empty()
         # Ensure market is still open.
@@ -288,11 +294,10 @@ class OrderManager:
         self.policy.fetch_historical_data()
         # Get trade signal
         self.signal = self.policy.trade_signal()
-        
         # Current open position
         self.position = self.exchange.get_position()
-        print("7777")
-        logger.info("Current Price is {}, trade signal: {}, position: {}".format(self.last_price, self.signal, self.position))
+        logger.info(
+            "Current Price is {}, trade signal: {}, position: {}".format(self.last_price, self.signal, self.position))
         # Last order is executed, cancel all orders(StopLimit/Limit)
         if self.is_trade and self.position == 0:
             self.exchange.cancel_all_orders()
@@ -301,14 +306,14 @@ class OrderManager:
             self.stop_price = 0
             self.profit_price = 0
             self.last_order_min = -1
-            #self.last_order_direction = self.policy.TREND_FLAT
+            # self.last_order_direction = self.policy.TREND_FLAT
 
         # Logging open position info
         if self.position != 0:
             logger.info("Holding position {}, \tOrder price {} \tStop Price {} \tProfit Price {} ".
                         format(self.position, self.order_price, self.stop_price, self.profit_price))
 
-        if self.check_if_order() :
+        if self.check_if_order():
             if self.signal == constants.UP:
                 logger.info("Buy Trade Signal {}".format(self.last_price))
                 logger.info("-----------------------------------------")
@@ -322,7 +327,7 @@ class OrderManager:
                 self.last_order_direction = constants.UP
                 self.order_price = order['price']
                 logger.info("Order price {} \tStop Price {} \tProfit Price {} ".
-                      format(order['price'], self.stop_price, self.profit_price))
+                            format(order['price'], self.stop_price, self.profit_price))
                 sleep(settings.API_REST_INTERVAL)
 
                 if settings.STOP_LOSS_FACTOR != "":
@@ -362,7 +367,7 @@ class OrderManager:
                 self.order_price = order['price']
 
                 logger.info("Order price {} \tStop Price {} \tProfit Price {} ".
-                      format(order['price'], self.stop_price, self.profit_price))
+                            format(order['price'], self.stop_price, self.profit_price))
                 sleep(settings.API_REST_INTERVAL)
                 if settings.STOP_LOSS_FACTOR != "":
                     self.place_orders(side=self.BUY, orderType='Stop', quantity=self.amount,
@@ -376,12 +381,13 @@ class OrderManager:
                 self.last_order_min = last_5mins()
 
     def check_if_stop(self):
-        ratio = XBt_to_XBT(self.start_XBt)/constants.INITIAL_BALANCE
+        ratio = XBt_to_XBT(self.start_XBt) / constants.INITIAL_BALANCE
         if ratio <= constants.STOP_BALANCE_RATIO:
-            raise errors.HugeLossError("U have lost {}% of the initial fund, we stop here.".format(constants.STOP_BALANCE_RATIO * 100))
+            raise errors.HugeLossError(
+                "U have lost {}% of the initial fund, we stop here.".format(constants.STOP_BALANCE_RATIO * 100))
         else:
             ROE = (XBt_to_XBT(self.start_XBt) - constants.INITIAL_BALANCE) / constants.INITIAL_BALANCE
-            logger.info("ROE:{}%".format(ROE*100))
+            logger.info("ROE:{}%".format(ROE * 100))
 
     # 检查当前时间是否适合开单
     def check_if_order(self):
@@ -429,7 +435,6 @@ class OrderManager:
 
             self.sanity_check()  # Ensures health of mm - several cut-out points here
             self.print_status()  # Print skew, delta, etc
-            self.check_if_stop()
 
     def restart(self):
         logger.info("Restarting the bitmex bot...")
