@@ -234,6 +234,9 @@ class OrderManager:
 
     def place_orders(self, **kwargs):
         """Create order items for use in convergence."""
+        if settings.DRY_RUN == 1:
+            logger.info("You are in DRY_RUN mode, skip placing order...")
+            return
         return self.exchange.place_order(**kwargs)
 
     ###
@@ -302,7 +305,7 @@ class OrderManager:
                         format(self.position, self.order_price, self.stop_price, self.profit_price))
 
         if self.check_if_order() :
-            if signal == self.policy.TREND_UP:
+            if signal == constants.UP:
                 logger.info("Buy Trade Signal {}".format(self.last_price))
                 logger.info("-----------------------------------------")
                 self.is_trade = True
@@ -312,7 +315,7 @@ class OrderManager:
                 if settings.STOP_LOSS_FACTOR != "":
                     self.stop_price = order['price'] - settings.STOP_LOSS_FACTOR
                 # Long
-                self.last_order_direction = self.policy.TREND_UP
+                self.last_order_direction = constants.UP
                 self.order_price = order['price']
                 logger.info("Order price {} \tStop Price {} \tProfit Price {} ".
                       format(order['price'], self.stop_price, self.profit_price))
@@ -338,7 +341,7 @@ class OrderManager:
                 self.last_order_min = last_5mins()
 
 
-            elif signal == self.policy.TREND_DOWN:
+            elif signal == constants.DOWN:
                 logger.info("Sell Trade Signal {}".format(self.last_price))
                 logger.info("-----------------------------------------")
                 self.is_trade = True
@@ -351,7 +354,7 @@ class OrderManager:
                 if settings.STOP_LOSS_FACTOR != "":
                     self.stop_price = order['price'] + settings.STOP_LOSS_FACTOR
 
-                self.last_order_direction = self.policy.TREND_DOWN
+                self.last_order_direction = constants.DOWN
                 self.order_price = order['price']
 
                 logger.info("Order price {} \tStop Price {} \tProfit Price {} ".

@@ -14,13 +14,13 @@ class Bitmex(object):
         self.BASE_URL = s.BASE_URL_TESTING if s.MODE == "TESTING" else s.BASE_URL_LIVE
             #"https://www.bitmex.com/api/v1/"
 
-    def get_historical_data(self, tick='5m', count=400, reverse="false",
+    def get_historical_data(self, tick='5m', count=400, reverse="false", partial="false",
                             start_time='', end_time=''):
         # last one hour data with latest one in the end
 
-        url = self.BASE_URL + "trade/bucketed?binSize={}&partial=false&symbol={}&count={}&reverse={}" \
+        url = self.BASE_URL + "trade/bucketed?binSize={}&partial={}&symbol={}&count={}&reverse={}" \
                               "&startTime={}&endTime={}". \
-            format(tick, self.symbol, count, reverse, start_time, end_time)
+            format(tick, partial, self.symbol, count, reverse, start_time, end_time)
         r = json.loads(requests.get(url).text)
 
         lst = []

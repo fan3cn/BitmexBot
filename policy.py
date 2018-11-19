@@ -3,27 +3,11 @@ import datetime
 from time import sleep
 from bitmex_bot.bitmex_historical import Bitmex
 from bitmex_bot.utils.util import last_5mins
+from bitmex_bot.utils import constants
+import bitmex_bot.utils.constants
 
 
 class Policy():
-    TREND_UP = 1
-    TREND_DOWN = 2
-    TREND_FLAT = 0
-
-    ONE_MILLION = 1000000
-
-    RULE_1_DOWN_VOLUME = ONE_MILLION
-    RULE_1_DOWN_VOLUME_RATIO = 3
-    RULE_1_DOWN_TRADE_GAP = 0.3
-
-    RULE_1_UP_VOLUME = 2 * ONE_MILLION
-    RULE_1_UP_VOLUME_RATIO = 3
-    RULE_1_UP_TRADE_GAP = 0.3
-
-    RULE_2_DOWN_TRADE_GAP = 0.3
-    RULE_2_UP_TRADE_GAP = 0.3
-
-    RULE_3_CONSECUTIVE = 5
 
     def __init__(self):
         self.logger = logging.getLogger()
@@ -31,6 +15,9 @@ class Policy():
         self.trades_1_min = []
         # keep One day(24hour*60/5 = 288) data
         self.trades_5_min = []
+        # Keep the latest trades with bin size of 5 min
+        self.trades_5_min_partial = []
+        #self.trades_5_min = []
         #self.trades_15_min = []
         # keep 5 days(5*24=120) data
         self.trades_1_hour = []
@@ -42,7 +29,9 @@ class Policy():
 
     def fetch_historical_data(self):
         if last_5mins() != self.last_exe_time:
-            self.trades_5_min = Bitmex().get_historical_data(tick='5m', count=6, reverse='true')
+            self.trades_5_min = Bitmex().get_historical_data(tick='5m', count=6, reverse='true', partial='true')
+            self.trades_5_min = self.trades_5_min[1:6]
+            self.trades_5_min_partial = self.trades_5_min[0]
             self.logger.info(self.trades_5_min)
             self.last_exe_time = last_5mins()
 
@@ -88,6 +77,8 @@ class Policy():
     def close(self, trade):
         return float(trade['close'])
 
+    def avg(self, trade):
+        return (float(trade['open']) + float(trade['close']) )/2
 
     # 连续两个五分钟：
     #     # 上涨时：volume > 2M and gap >= 0.3 and volume_ratio > 5
@@ -100,28 +91,28 @@ class Policy():
         p_trade = self.trades_5_min[1]
 
         if self.down(p_trade) and self.down(trade) and \
-                self.trade_volume(trade) >= self.RULE_1_DOWN_VOLUME and \
-                self.trade_volume_ratio(trade, p_trade) >= self.RULE_1_DOWN_VOLUME_RATIO and \
-                self.trade_gap(trade) >= self.RULE_1_DOWN_TRADE_GAP:
+                self.trade_volume(trade) >= constants.RULE_1_DOWN_VOLUME and \
+                self.trade_volume_ratio(trade, p_trade) >= constants.RULE_1_DOWN_VOLUME_RATIO and \
+                self.trade_gap(trade) >= constants.RULE_1_DOWN_TRADE_GAP:
 
             self.logger.info("SIGNAL DOWN, Policy rule_1 hits, trade volume:{},trade_volume_ratio:{}, trade gap:{}, from {} to {}." \
                              .format(self.trade_volume(trade), self.trade_volume_ratio(trade, p_trade), \
                     self.trade_gap(trade), self.open(trade), self.close(trade)))
 
-            return self.TREND_DOWN
+            return constants.DOWN
 
         if self.up(p_trade) and self.up(trade) and \
-                self.trade_volume(trade) >= self.RULE_1_UP_VOLUME and \
-                self.trade_volume_ratio(trade, p_trade) >= self.RULE_1_UP_VOLUME_RATIO and \
-                self.trade_gap(trade) >= self.RULE_1_UP_TRADE_GAP:
+                self.trade_volume(trade) >= constants.RULE_1_UP_VOLUME and \
+                self.trade_volume_ratio(trade, p_trade) >= constants.RULE_1_UP_VOLUME_RATIO and \
+                self.trade_gap(trade) >= constants.RULE_1_UP_TRADE_GAP:
 
             self.logger.info("SIGNAL UP, Policy rule_1 hits, trade volume:{},trade_volume_ratio:{}, trade gap:{}, from {} to {}." \
                              .format(self.trade_volume(trade), self.trade_volume_ratio(trade, p_trade), \
                     self.trade_gap(trade), self.open(trade), self.close(trade)))
 
-            return self.TREND_UP
+            return constants.UP
 
-        return self.TREND_FLAT
+        return constants.FLAT
 
     # 连续三个五分钟：持续下跌，量级递增，且有一个gap大于0.3
     def rule_2(self):
@@ -132,9 +123,9 @@ class Policy():
         is_all_down = self.down(trade) and self.down(p_trade) and self.down(pp_trade)
         is_volume_up = self.trade_volume(trade) >= self.trade_volume(p_trade) and \
                          self.trade_volume(p_trade)>= self.trade_volume(pp_trade)
-        has_one_dump = self.trade_gap(trade) >= self.RULE_2_DOWN_TRADE_GAP or \
-                       self.trade_gap(p_trade)  >= self.RULE_2_DOWN_TRADE_GAP or \
-                       self.trade_gap(pp_trade) >= self.RULE_2_DOWN_TRADE_GAP
+        has_one_dump = self.trade_gap(trade) >= constants.RULE_2_DOWN_TRADE_GAP or \
+                       self.trade_gap(p_trade)  >= constants.RULE_2_DOWN_TRADE_GAP or \
+                       self.trade_gap(pp_trade) >= constants.RULE_2_DOWN_TRADE_GAP
 
         if is_all_down and is_volume_up and has_one_dump:
 
@@ -145,14 +136,12 @@ class Policy():
                 self.trade_gap(trade), self.trade_gap(p_trade), self.trade_gap(pp_trade))
             )
 
-
-
-            return self.TREND_DOWN
+            return constants.DOWN
 
         is_all_up = self.up(trade) and self.up(p_trade) and self.up(pp_trade)
-        has_one_jump = self.trade_gap(trade) >= self.RULE_2_UP_TRADE_GAP or \
-                       self.trade_gap(p_trade)  >= self.RULE_2_UP_TRADE_GAP or \
-                       self.trade_gap(pp_trade) >= self.RULE_2_UP_TRADE_GAP
+        has_one_jump = self.trade_gap(trade) >= constants.RULE_2_UP_TRADE_GAP or \
+                       self.trade_gap(p_trade)  >= constants.RULE_2_UP_TRADE_GAP or \
+                       self.trade_gap(pp_trade) >= constants.RULE_2_UP_TRADE_GAP
 
         if is_all_up and is_volume_up and has_one_jump:
 
@@ -165,50 +154,93 @@ class Policy():
             )
 
 
-            return self.TREND_UP
+            return constants.UP
 
-        return self.TREND_FLAT
+        return constants.FLAT
 
     # 连续五个五分钟：
     # 持续上涨，close - open > 0
     # 持续下跌，close - open < 0
     def rule_3(self):
-        unit = self.RULE_3_CONSECUTIVE
+        unit = constants.RULE_3_CONSECUTIVE_UP
         trades = self.trades_5_min[0:unit:1][::-1]
+        head_tail_gap = abs(self.avg(trades[0]) - self.avg(trades[-1]))
 
-        if sum([self.up(trade) for trade in trades]) >= unit:
+        if sum([self.up(trade) for trade in trades]) >= unit and \
+            head_tail_gap >= constants.RULE_3_HEAD_TAIL_GAP_UP:
 
-            self.logger.info("SIGNAL UP, Policy rule_3 hits")
+            self.logger.info("SIGNAL UP, Policy rule_3 hits, head tail gap {}.".format(head_tail_gap))
 
-            return self.TREND_UP
-        elif sum([self.down(trade) for trade in trades]) >= unit:
+            return constants.UP
 
-            self.logger.info("SIGNAL DOWN, Policy rule_3 hits")
+        unit = constants.RULE_3_CONSECUTIVE_DOWN
+        trades = self.trades_5_min[0:unit:1][::-1]
+        head_tail_gap = abs(self.avg(trades[0]) - self.avg(trades[-1]))
 
-            return self.TREND_DOWN
-        else:
-            return self.TREND_FLAT
+        if sum([self.down(trade) for trade in trades]) >= unit and \
+            head_tail_gap >= constants.RULE_3_HEAD_TAIL_GAP_DOWN:
 
-    #def trade_signal(self):
-        #return 2
+            self.logger.info("SIGNAL DOWN, Policy rule_3 hits, head tail gap {}.".format(head_tail_gap))
+
+            return constants.DOWN
+
+        return constants.FLAT
+
+    # 短时间内放量下跌/上涨
+    def rule_4(self):
+        trade = self.trades_5_min_partial[0]
+        if self.up(trade) and \
+                self.trade_gap(trade) >= constants.RULE_4_SURGE_TRADE_GAP and \
+                self.trade_volume(trade) >= constants.RULE_4_SURGE_VOLUME:
+            self.logger.info("SIGNAL UP, Market surges, Policy rule_4 hits, surge gap:{}, trade volume:{}." \
+                             .format(self.trade_gap(trade), self.trade_volume(trade)))
+            return constants.UP
+
+        if self.down(trade) and \
+                self.trade_gap(trade) >= constants.RULE_4_PLUNGE_TRADE_GAP and \
+                self.trade_volume(trade) >= constants.RULE_4_PLUNGE_VOLUME:
+            self.logger.info("SIGNAL DOWN, Market surges, Policy rule_4 hits, surge gap:{}, trade volume:{}." \
+                             .format(self.trade_gap(trade), self.trade_volume(trade)))
+            return constants.DOWN
+
+        return constants.FLAT
 
     def trade_signal(self):
+        signal = self._trade_signal()
+
+        return signal
+
+    def _trade_signal(self):
 
         self.format_OHLC_log(self.trades_5_min[0])
 
+        r4 = self.rule_4()
+        if r4 > constants.FLAT:
+            return r4
+        
         r1 = self.rule_1()
-        if r1 > self.TREND_FLAT:
+        if r1 > constants.FLAT:
             return r1
 
         r2 = self.rule_2()
-        if r2 > self.TREND_FLAT:
+        if r2 > constants.FLAT:
             return r2
 
         r3 = self.rule_3()
-        if r3 > self.TREND_FLAT:
+        if r3 > constants.FLAT:
             return r3
 
-        return self.TREND_FLAT
+        return constants.FLAT
+
+    # RealTime trade signal
+    def current_trade_signal(self):
+        trade = self.trades_5_min_partial[0]
+        if self.up(trade):
+            return constants.UP
+        elif self.down(trade):
+            return constants.DOWN
+        else:
+            return constants.FLAT
 
     def format_OHLC_log(self, trade):
         if last_5mins() == self.last_exe_time_log:
@@ -312,7 +344,7 @@ class Policy():
                 else:
                     signal = self.trade_signal()
 
-                    if signal == self.TREND_UP:
+                    if signal == constants.UP:
                         # 买入，place order
                         buy_price = price
                         self.margin = self.contract_num / self.leverage
@@ -326,7 +358,7 @@ class Policy():
                         self.position = self.position + self.contract_num
                         self.logger.info("Long ETH at price:{}, ETH num:{}, profit price:{}, stop price:{}, balance:{}, position:{}"
                                          .format(buy_price, self.eth_num, self.profit_price, self.stop_price, self.balance, self.position))
-                    elif signal == self.TREND_DOWN:
+                    elif signal == constants.DOWN:
                         # 卖出，place order
                         sell_price = price
                         self.margin = self.contract_num / self.leverage
