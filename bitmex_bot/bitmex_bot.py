@@ -15,6 +15,7 @@ from policy import Policy
 import logging
 from bitmex_bot.bot_trade import BOT_TRADE
 from bitmex_bot.utils.util import last_5mins
+from decimal import Decimal
 
 # Used for reloading the bot - saves modified times of key files
 import os
@@ -320,12 +321,12 @@ class OrderManager:
                 self.is_trade = True
                 order = self.place_orders(side=self.BUY, orderType='Market', quantity=self.amount)
                 if settings.STOP_PROFIT_FACTOR != "":
-                    self.profit_price = order['price'] + settings.STOP_PROFIT_FACTOR
+                    self.profit_price = Decimal(order['price']) + Decimal(settings.STOP_PROFIT_FACTOR)
                 if settings.STOP_LOSS_FACTOR != "":
-                    self.stop_price = order['price'] - settings.STOP_LOSS_FACTOR
+                    self.stop_price = Decimal(order['price']) - Decimal(settings.STOP_LOSS_FACTOR)
                 # Long
                 self.last_order_direction = constants.UP
-                self.order_price = order['price']
+                self.order_price = Decimal(order['price'])
                 logger.info("Order price {} \tStop Price {} \tProfit Price {} ".
                             format(order['price'], self.stop_price, self.profit_price))
                 sleep(settings.API_REST_INTERVAL)
@@ -359,12 +360,12 @@ class OrderManager:
                 order = self.place_orders(side=self.SELL, orderType='Market', quantity=self.amount)
 
                 if settings.STOP_PROFIT_FACTOR != "":
-                    self.profit_price = order['price'] - settings.STOP_PROFIT_FACTOR
+                    self.profit_price = Decimal(order['price']) - Decimal(settings.STOP_PROFIT_FACTOR)
                 if settings.STOP_LOSS_FACTOR != "":
-                    self.stop_price = order['price'] + settings.STOP_LOSS_FACTOR
+                    self.stop_price = Decimal(order['price']) + Decimal(settings.STOP_LOSS_FACTOR)
 
                 self.last_order_direction = constants.DOWN
-                self.order_price = order['price']
+                self.order_price = Decimal(order['price'])
 
                 logger.info("Order price {} \tStop Price {} \tProfit Price {} ".
                             format(order['price'], self.stop_price, self.profit_price))
