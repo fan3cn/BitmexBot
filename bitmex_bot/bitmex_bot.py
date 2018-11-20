@@ -230,7 +230,7 @@ class OrderManager:
             raise errors.HugeLossError(
                 "U have lost {}% of the initial fund, we stop here.".format(constants.STOP_BALANCE_RATIO * 100))
         ROE = (XBt_to_XBT(self.start_XBt) - constants.INITIAL_BALANCE) / constants.INITIAL_BALANCE
-        logger.info("Current XBT Balance : %.6f, ROE : %.3f%%" % XBt_to_XBT(self.start_XBt), ROE)
+        logger.info("Current XBT Balance : %.6f, ROE : %.3f%%" % (XBt_to_XBT(self.start_XBt), ROE*100))
 
         # logger.info("Contracts Traded This Run by BOT: %d" % (self.running_qty - self.starting_qty1))
         # logger.info("Total Contract Delta: %.4f XBT" % self.exchange.calc_delta()['spot'])
@@ -247,7 +247,9 @@ class OrderManager:
         """Create order items for use in convergence."""
         if not settings.PLACE_ORDER:
             logger.info("You are NOT in PLACE_ORDER mode, skip placing order...")
-            return
+            order = {}
+            order['price'] = self.last_price
+            return order
         return self.exchange.place_order(**kwargs)
 
     ###
@@ -393,6 +395,9 @@ class OrderManager:
     def check_if_order(self):
         # 不能在同一个5分钟内连续开单
         # 判断是否下单错误
+        print(self.is_trade)
+        print(last_5mins())
+        print(self.last_order_min)
         return not self.is_trade and self.position == 0 and last_5mins() != self.last_order_min
 
     def check_file_change(self):
