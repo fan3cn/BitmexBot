@@ -62,9 +62,11 @@ class ExchangeInterface:
         tickLog = self.get_instrument()['tickLog']
 
         orders_1 = self.bitmex.http_open_orders()
-
         for order in orders_1:
-            logger.info("Canceling: %s %d @ %.*f" % (order['side'], order['orderQty'], tickLog, order['price']))
+            if order['ordType'] == "Stop":
+                logger.info("Canceling: %s %s %d @ %.*f" % (order['ordType'], order['side'], order['orderQty'],  tickLog, order['stopPx']))
+            if order['ordType'] == "Limit":
+                logger.info("Canceling: %s %s %d @ %.*f" % (order['ordType'], order['side'], order['orderQty'], tickLog, order['price']))
 
         if len(orders_1):
             self.bitmex.cancel([order['orderID'] for order in orders_1])
@@ -200,7 +202,7 @@ class OrderManager:
         self.running_qty = self.starting_qty1
         self.reset()
         # set cross margin for the trade
-        self.exchange.set_isolate_margin()
+        #self.exchange.set_isolate_margin()
         # set the leverage
         self.exchange.set_leverage()
 
