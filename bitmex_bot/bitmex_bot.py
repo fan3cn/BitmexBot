@@ -169,11 +169,12 @@ class OrderManager:
     DOWN = "down"
     SELL = "sell"
     BUY = "buy"
+    signals = [signal.SIGINT, signal.SIGHUP, signal.SIGTERM, signal.SIGKILL]
 
     def __init__(self):
         self.exchange = ExchangeInterface()
         atexit.register(self.exit)
-        signal.signal(signal.SIGTERM, self.exit)
+        [signal.signal(s, self.exit) for s in self.signals]
         self.current_bitmex_price = 0
         logger.info("-------------------------------------------------------------")
         logger.info("Starting Bot......")
@@ -393,7 +394,7 @@ class OrderManager:
         """Ensure the WS connections are still open."""
         return self.exchange.is_open()
 
-    def exit(self):
+    def exit(self, signalnum, frame):
         logger.info("Shutting down. All open orders will be cancelled.")
         try:
             if self.position == 0:
