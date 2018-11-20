@@ -4,6 +4,7 @@ from time import sleep
 from bitmex_bot.bitmex_historical import Bitmex
 from bitmex_bot.utils.util import last_5mins
 from bitmex_bot.utils import constants
+import settings
 import bitmex_bot.utils.constants
 
 
@@ -207,6 +208,9 @@ class Policy():
 
     def trade_signal(self):
         signal = self._trade_signal()
+
+        if settings.TEST_SIGNAL and settings.MODE == "TESTING":
+            return settings.TEST_SIGNAL
 
         return signal
 
