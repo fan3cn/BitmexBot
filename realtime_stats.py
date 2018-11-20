@@ -85,7 +85,9 @@ class RealtimeStats():
             #self.logger.info(self.price_change)
 
             sleep(1)
-
+    # 是否在瀑布，短时间内下跌超过1%
+    def is_jump(self):
+        return self.price_change_rate <= -1.0/100
 
     if __name__ == "__main__":
         print("HELLO")

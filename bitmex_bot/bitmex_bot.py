@@ -225,13 +225,11 @@ class OrderManager:
         self.running_qty = self.exchange.get_delta()
         self.start_XBt = margin1["marginBalance"]
 
-        ratio = XBt_to_XBT(self.start_XBt) / constants.INITIAL_BALANCE
-        if ratio <= constants.STOP_BALANCE_RATIO:
-            raise errors.HugeLossError(
-                "U have lost {}% of the initial fund, we stop here.".format(constants.STOP_BALANCE_RATIO * 100))
-        ROE = (XBt_to_XBT(self.start_XBt) - constants.INITIAL_BALANCE) / constants.INITIAL_BALANCE
+        ratio = XBt_to_XBT(self.start_XBt) / settings.INITIAL_BALANCE
+        if ratio <= settings.STOP_BALANCE_RATIO:
+            raise errors.HugeLossError("U have lost {}% of the initial fund, we stop here.".format(settings.STOP_BALANCE_RATIO * 100))
+        ROE = (XBt_to_XBT(self.start_XBt) - settings.INITIAL_BALANCE) / settings.INITIAL_BALANCE
         logger.info("Current XBT Balance : %.6f, ROE : %.3f%%" % (XBt_to_XBT(self.start_XBt), ROE*100))
-
         # logger.info("Contracts Traded This Run by BOT: %d" % (self.running_qty - self.starting_qty1))
         # logger.info("Total Contract Delta: %.4f XBT" % self.exchange.calc_delta()['spot'])
 
@@ -307,7 +305,7 @@ class OrderManager:
             self.order_price = 0
             self.stop_price = 0
             self.profit_price = 0
-            self.last_order_min = -1
+            #self.last_order_min = -1
             # self.last_order_direction = self.policy.TREND_FLAT
 
         # Logging open position info
@@ -382,22 +380,10 @@ class OrderManager:
 
                 self.last_order_min = last_5mins()
 
-    def check_if_stop(self):
-        ratio = XBt_to_XBT(self.start_XBt) / constants.INITIAL_BALANCE
-        if ratio <= constants.STOP_BALANCE_RATIO:
-            raise errors.HugeLossError(
-                "U have lost {}% of the initial fund, we stop here.".format(constants.STOP_BALANCE_RATIO * 100))
-        else:
-            ROE = (XBt_to_XBT(self.start_XBt) - constants.INITIAL_BALANCE) / constants.INITIAL_BALANCE
-            logger.info("ROE:{}%".format(ROE * 100))
-
     # 检查当前时间是否适合开单
     def check_if_order(self):
         # 不能在同一个5分钟内连续开单
         # 判断是否下单错误
-        print(self.is_trade)
-        print(last_5mins())
-        print(self.last_order_min)
         return not self.is_trade and self.position == 0 and last_5mins() != self.last_order_min
 
     def check_file_change(self):
