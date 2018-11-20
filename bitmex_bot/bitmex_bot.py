@@ -41,10 +41,8 @@ class ExchangeInterface:
 
         # mode in which mode you want to run your bot
         self.mode = settings.MODE
-        print(self.mode)
         if self.mode == "LIVE":
             url = settings.BASE_URL_LIVE
-        print(settings.LEVERAGE)
         self.bitmex = bitmex.BitMEX(base_url=url, symbol=self.symbol,
                                     apiKey=settings.API_KEY, apiSecret=settings.API_SECRET,
                                     orderIDPrefix=settings.ORDERID_PREFIX, leverage=settings.LEVERAGE)
@@ -227,7 +225,7 @@ class OrderManager:
 
         ratio = XBt_to_XBT(self.start_XBt) / settings.INITIAL_BALANCE
         if ratio <= settings.STOP_BALANCE_RATIO:
-            raise errors.HugeLossError("U have lost {}% of the initial fund, we stop here.".format(settings.STOP_BALANCE_RATIO * 100))
+            raise errors.HugeLossError("U have lost %.2f%% of the initial fund, we stop here." % ((1 - settings.STOP_BALANCE_RATIO) * 100))
         ROE = (XBt_to_XBT(self.start_XBt) - settings.INITIAL_BALANCE) / settings.INITIAL_BALANCE
         logger.info("Current XBT Balance : %.6f, ROE : %.3f%%" % (XBt_to_XBT(self.start_XBt), ROE*100))
         # logger.info("Contracts Traded This Run by BOT: %d" % (self.running_qty - self.starting_qty1))
