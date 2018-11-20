@@ -40,10 +40,10 @@ class ExchangeInterface:
 
         # mode in which mode you want to run your bot
         self.mode = settings.MODE
-
+        print(self.mode)
         if self.mode == "LIVE":
             url = settings.BASE_URL_LIVE
-
+        print(settings.LEVERAGE)
         self.bitmex = bitmex.BitMEX(base_url=url, symbol=self.symbol,
                                     apiKey=settings.API_KEY, apiSecret=settings.API_SECRET,
                                     orderIDPrefix=settings.ORDERID_PREFIX, leverage=settings.LEVERAGE)
@@ -189,6 +189,7 @@ class OrderManager:
         self.order_price = 0
         self.stop_price = 0
         self.profit_price = 0
+        self.last_order_min = -1
         logger.info("Using symbol %s." % self.exchange.symbol)
 
     def init(self):
@@ -210,9 +211,11 @@ class OrderManager:
 
     def reset(self):
         self.exchange.cancel_all_orders()
+        self.print_status()
         self.sanity_check()
         self.print_status()
         if settings.DRY_RUN:
+            print("Yes, we exit")
             sys.exit()
 
     def print_status(self):
@@ -285,10 +288,11 @@ class OrderManager:
         self.policy.fetch_historical_data()
         # Get trade signal
         self.signal = self.policy.trade_signal()
+        
         # Current open position
         self.position = self.exchange.get_position()
-
-        logger.info("Current Price is {}, trade signal: {}, position: {}".format(self.last_price, signal, self.position))
+        print("7777")
+        logger.info("Current Price is {}, trade signal: {}, position: {}".format(self.last_price, self.signal, self.position))
         # Last order is executed, cancel all orders(StopLimit/Limit)
         if self.is_trade and self.position == 0:
             self.exchange.cancel_all_orders()
@@ -305,7 +309,7 @@ class OrderManager:
                         format(self.position, self.order_price, self.stop_price, self.profit_price))
 
         if self.check_if_order() :
-            if signal == constants.UP:
+            if self.signal == constants.UP:
                 logger.info("Buy Trade Signal {}".format(self.last_price))
                 logger.info("-----------------------------------------")
                 self.is_trade = True
@@ -341,7 +345,7 @@ class OrderManager:
                 self.last_order_min = last_5mins()
 
 
-            elif signal == constants.DOWN:
+            elif self.signal == constants.DOWN:
                 logger.info("Sell Trade Signal {}".format(self.last_price))
                 logger.info("-----------------------------------------")
                 self.is_trade = True
@@ -425,6 +429,7 @@ class OrderManager:
 
             self.sanity_check()  # Ensures health of mm - several cut-out points here
             self.print_status()  # Print skew, delta, etc
+            self.check_if_stop()
 
     def restart(self):
         logger.info("Restarting the bitmex bot...")
