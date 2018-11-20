@@ -31,7 +31,7 @@ class Policy():
         if last_5mins() != self.last_exe_time:
             self.trades_5_min = Bitmex().get_historical_data(tick='5m', count=6, reverse='true', partial='true')
             self.trades_5_min = self.trades_5_min[1:6]
-            self.trades_5_min_partial = self.trades_5_min[0]
+            self.trades_5_min_partial = self.trades_5_min[0:1]
             self.logger.info(self.trades_5_min)
             self.last_exe_time = last_5mins()
 
@@ -213,7 +213,7 @@ class Policy():
     def _trade_signal(self):
 
         self.format_OHLC_log(self.trades_5_min[0])
-
+        
         r4 = self.rule_4()
         if r4 > constants.FLAT:
             return r4
@@ -221,15 +221,15 @@ class Policy():
         r1 = self.rule_1()
         if r1 > constants.FLAT:
             return r1
-
+        
         r2 = self.rule_2()
         if r2 > constants.FLAT:
             return r2
-
+        
         r3 = self.rule_3()
         if r3 > constants.FLAT:
             return r3
-
+        
         return constants.FLAT
 
     # RealTime trade signal
