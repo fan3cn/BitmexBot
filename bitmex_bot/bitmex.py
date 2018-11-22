@@ -10,6 +10,7 @@ import logging
 from bitmex_bot.auth import APIKeyAuthWithExpires
 from bitmex_bot.utils import constants, errors
 from bitmex_bot.ws.ws_thread import BitMEXWebsocket
+import random
 
 
 # https://www.bitmex.com/api/explorer/
@@ -245,7 +246,7 @@ class BitMEX(object):
             'symbol': self.symbol,
             'leverage': self.leverage
         }
-        return self._curl_bitmex(path=path, postdict=postdict, verb="POST", max_retries=1)
+        return self._curl_bitmex(path=path, postdict=postdict, verb="POST")
 
     def _curl_bitmex(self, path, query=None, postdict=None, timeout=5, verb=None, rethrow_errors=False,
                      max_retries=None):
@@ -262,7 +263,7 @@ class BitMEX(object):
         # or you could change the clOrdID (set {"clOrdID": "new", "origClOrdID": "old"}) so that an amend
         # can't erroneously be applied twice.
         if max_retries is None:
-            max_retries = 0 if verb in ['POST', 'PUT'] else 3
+            max_retries = 3 if verb in ['POST', 'PUT'] else 5
 
         # Auth: API Key/Secret
         auth = APIKeyAuthWithExpires(self.apiKey, self.apiSecret)
@@ -336,7 +337,7 @@ class BitMEX(object):
             elif response.status_code == 503:
                 self.logger.warning("Unable to contact the BitMEX API (503), retrying. " +
                                     "Request: %s \n %s" % (url, json.dumps(postdict)))
-                time.sleep(3)
+                time.sleep(random.randint(1,10))
                 return retry()
 
             elif response.status_code == 400:
@@ -375,12 +376,14 @@ class BitMEX(object):
         except requests.exceptions.Timeout as e:
             # Timeout, re-run this request
             self.logger.warning("Timed out on request: %s (%s), retrying..." % (path, json.dumps(postdict or '')))
+            # Temporarily Overload
+            time.sleep(random.randint(1,5))
             return retry()
 
         except requests.exceptions.ConnectionError as e:
             self.logger.warning("Unable to contact the BitMEX API (%s). Please check the URL. Retrying. " +
                                 "Request: %s %s \n %s" % (e, url, json.dumps(postdict)))
-            time.sleep(1)
+            time.sleep(3)
             return retry()
 
         # Reset retry counter on success
