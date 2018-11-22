@@ -92,9 +92,9 @@ class Policy():
         p_trade = self.trades_5_min[1]
 
         if self.down(p_trade) and self.down(trade) and \
-                self.trade_volume(trade) >= constants.RULE_1_DOWN_VOLUME and \
-                self.trade_volume_ratio(trade, p_trade) >= constants.RULE_1_DOWN_VOLUME_RATIO and \
-                self.trade_gap(trade) >= constants.RULE_1_DOWN_TRADE_GAP:
+                self.trade_volume(trade) >= settings.RULE_1_DOWN_VOLUME and \
+                self.trade_volume_ratio(trade, p_trade) >= settings.RULE_1_DOWN_VOLUME_RATIO and \
+                self.trade_gap(trade) >= settings.RULE_1_DOWN_TRADE_GAP:
 
             self.logger.info("SIGNAL DOWN, Policy rule_1 hits, trade volume:{},trade_volume_ratio:{}, trade gap:{}, from {} to {}." \
                              .format(self.trade_volume(trade), self.trade_volume_ratio(trade, p_trade), \
@@ -103,9 +103,9 @@ class Policy():
             return constants.DOWN
 
         if self.up(p_trade) and self.up(trade) and \
-                self.trade_volume(trade) >= constants.RULE_1_UP_VOLUME and \
-                self.trade_volume_ratio(trade, p_trade) >= constants.RULE_1_UP_VOLUME_RATIO and \
-                self.trade_gap(trade) >= constants.RULE_1_UP_TRADE_GAP:
+                self.trade_volume(trade) >= settings.RULE_1_UP_VOLUME and \
+                self.trade_volume_ratio(trade, p_trade) >= settings.RULE_1_UP_VOLUME_RATIO and \
+                self.trade_gap(trade) >= settings.RULE_1_UP_TRADE_GAP:
 
             self.logger.info("SIGNAL UP, Policy rule_1 hits, trade volume:{},trade_volume_ratio:{}, trade gap:{}, from {} to {}." \
                              .format(self.trade_volume(trade), self.trade_volume_ratio(trade, p_trade), \
@@ -124,9 +124,9 @@ class Policy():
         is_all_down = self.down(trade) and self.down(p_trade) and self.down(pp_trade)
         is_volume_up = self.trade_volume(trade) >= self.trade_volume(p_trade) and \
                          self.trade_volume(p_trade)>= self.trade_volume(pp_trade)
-        has_one_dump = self.trade_gap(trade) >= constants.RULE_2_DOWN_TRADE_GAP or \
-                       self.trade_gap(p_trade)  >= constants.RULE_2_DOWN_TRADE_GAP or \
-                       self.trade_gap(pp_trade) >= constants.RULE_2_DOWN_TRADE_GAP
+        has_one_dump = self.trade_gap(trade) >= settings.RULE_2_DOWN_TRADE_GAP or \
+                       self.trade_gap(p_trade) >= settings.RULE_2_DOWN_TRADE_GAP or \
+                       self.trade_gap(pp_trade) >= settings.RULE_2_DOWN_TRADE_GAP
 
         if is_all_down and is_volume_up and has_one_dump:
 
@@ -140,9 +140,9 @@ class Policy():
             return constants.DOWN
 
         is_all_up = self.up(trade) and self.up(p_trade) and self.up(pp_trade)
-        has_one_jump = self.trade_gap(trade) >= constants.RULE_2_UP_TRADE_GAP or \
-                       self.trade_gap(p_trade)  >= constants.RULE_2_UP_TRADE_GAP or \
-                       self.trade_gap(pp_trade) >= constants.RULE_2_UP_TRADE_GAP
+        has_one_jump = self.trade_gap(trade) >= settings.RULE_2_UP_TRADE_GAP or \
+                       self.trade_gap(p_trade) >= settings.RULE_2_UP_TRADE_GAP or \
+                       self.trade_gap(pp_trade) >= settings.RULE_2_UP_TRADE_GAP
 
         if is_all_up and is_volume_up and has_one_jump:
 
@@ -163,23 +163,23 @@ class Policy():
     # 持续上涨，close - open > 0
     # 持续下跌，close - open < 0
     def rule_3(self):
-        unit = constants.RULE_3_CONSECUTIVE_UP
+        unit = settings.RULE_3_CONSECUTIVE_UP
         trades = self.trades_5_min[0:unit:1][::-1]
         head_tail_gap = abs(self.avg(trades[0]) - self.avg(trades[-1]))
 
         if sum([self.up(trade) for trade in trades]) >= unit and \
-            head_tail_gap >= constants.RULE_3_HEAD_TAIL_GAP_UP:
+            head_tail_gap >= settings.RULE_3_HEAD_TAIL_GAP_UP:
 
             self.logger.info("SIGNAL UP, Policy rule_3 hits, head tail gap {}.".format(head_tail_gap))
 
             return constants.UP
 
-        unit = constants.RULE_3_CONSECUTIVE_DOWN
+        unit = settings.RULE_3_CONSECUTIVE_DOWN
         trades = self.trades_5_min[0:unit:1][::-1]
         head_tail_gap = abs(self.avg(trades[0]) - self.avg(trades[-1]))
 
         if sum([self.down(trade) for trade in trades]) >= unit and \
-            head_tail_gap >= constants.RULE_3_HEAD_TAIL_GAP_DOWN:
+            head_tail_gap >= settings.RULE_3_HEAD_TAIL_GAP_DOWN:
 
             self.logger.info("SIGNAL DOWN, Policy rule_3 hits, head tail gap {}.".format(head_tail_gap))
 
@@ -191,15 +191,15 @@ class Policy():
     def rule_4(self):
         trade = self.trades_5_min_partial[0]
         if self.up(trade) and \
-                self.trade_gap(trade) >= constants.RULE_4_SURGE_TRADE_GAP and \
-                self.trade_volume(trade) >= constants.RULE_4_SURGE_VOLUME:
+                self.trade_gap(trade) >= settings.RULE_4_SURGE_TRADE_GAP and \
+                self.trade_volume(trade) >= settings.RULE_4_SURGE_VOLUME:
             self.logger.info("SIGNAL UP, Market surges, Policy rule_4 hits, surge gap:{}, trade volume:{}." \
                              .format(self.trade_gap(trade), self.trade_volume(trade)))
             return constants.UP
 
         if self.down(trade) and \
-                self.trade_gap(trade) >= constants.RULE_4_PLUNGE_TRADE_GAP and \
-                self.trade_volume(trade) >= constants.RULE_4_PLUNGE_VOLUME:
+                self.trade_gap(trade) >= settings.RULE_4_PLUNGE_TRADE_GAP and \
+                self.trade_volume(trade) >= settings.RULE_4_PLUNGE_VOLUME:
             self.logger.info("SIGNAL DOWN, Market surges, Policy rule_4 hits, surge gap:{}, trade volume:{}." \
                              .format(self.trade_gap(trade), self.trade_volume(trade)))
             return constants.DOWN
