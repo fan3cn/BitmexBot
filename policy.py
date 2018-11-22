@@ -274,7 +274,11 @@ class Policy():
         r3 = self.rule_3()
         if r3 > constants.FLAT:
             return r3
-        
+
+        r5 = self.rule_5()
+        if r5 > constants.FLAT:
+            return r5
+
         return constants.FLAT
 
     # RealTime trade signal
