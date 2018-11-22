@@ -30,7 +30,7 @@ class Policy():
 
     def fetch_historical_data(self):
         if last_5mins() != self.last_exe_time:
-            self.trades_5_min = Bitmex().get_historical_data(tick='5m', count=6, reverse='true', partial='true')
+            self.trades_5_min = Bitmex().get_historical_data(tick='5m', count=10, reverse='true', partial='true')
             self.trades_5_min = self.trades_5_min[1:6]
             self.trades_5_min_partial = self.trades_5_min[0:1]
             self.logger.info(self.trades_5_min)
@@ -205,6 +205,47 @@ class Policy():
             return constants.DOWN
 
         return constants.FLAT
+
+    # 连续4个5分钟平均价格下跌/上涨
+    def rule_5(self):
+        unit = settings.RULE_5_CONSECUTIVE_UP
+        trades = self.trades_5_min[0:unit:1][::-1]
+        head_tail_gap = abs(self.avg(trades[0]) - self.avg(trades[-1]))
+        pre_avg = -1
+        count = 0
+        for trade in trades:
+            if self.avg(trade) >= pre_avg:
+                count += 1
+            pre_avg = self.avg(trade)
+
+        if count >= unit and \
+            head_tail_gap >= settings.RULE_5_HEAD_TAIL_GAP_UP:
+
+            self.logger.info("SIGNAL UP, Policy rule_5 hits, head tail gap {}.".format(head_tail_gap))
+
+            return constants.UP
+
+        unit = settings.RULE_5_CONSECUTIVE_DOWN
+        trades = self.trades_5_min[0:unit:1][::-1]
+        head_tail_gap = abs(self.avg(trades[0]) - self.avg(trades[-1]))
+
+        pre_avg = settings.ONE_MILLION
+        count = 0
+        for trade in trades:
+            if self.avg(trade) <= pre_avg:
+                count += 1
+            pre_avg = self.avg(trade)
+
+        if count >= unit and \
+            head_tail_gap >= settings.RULE_5_HEAD_TAIL_GAP_DOWN:
+
+            self.logger.info("SIGNAL DOWN, Policy rule_5 hits, head tail gap {}.".format(head_tail_gap))
+
+            return constants.DOWN
+
+        return constants.FLAT
+
+
 
     def trade_signal(self):
         signal = self._trade_signal()
