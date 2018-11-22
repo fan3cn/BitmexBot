@@ -174,7 +174,7 @@ class OrderManager:
     def __init__(self):
         self.exchange = ExchangeInterface()
         atexit.register(self.exit)
-        [signal.signal(s, self.exit) for s in self.signals]
+        signal.signal(signal.SIGTERM, self.exit)
         self.current_bitmex_price = 0
         logger.info("-------------------------------------------------------------")
         logger.info("Starting Bot......")
@@ -225,7 +225,7 @@ class OrderManager:
 
         ratio = XBt_to_XBT(self.start_XBt) / settings.INITIAL_BALANCE
         if ratio <= settings.STOP_BALANCE_RATIO:
-            raise errors.HugeLossError("U have lost %.2f%% of the initial fund, we stop here." % ((1 - settings.STOP_BALANCE_RATIO) * 100))
+            raise errors.HugeLossError("U have lost %.2f%% of the initial fund, we stop here." % ((1 - ratio) * 100))
         ROE = (XBt_to_XBT(self.start_XBt) - settings.INITIAL_BALANCE) / settings.INITIAL_BALANCE
         logger.info("Current XBT Balance : %.6f, ROE : %.3f%%" % (XBt_to_XBT(self.start_XBt), ROE*100))
         # logger.info("Contracts Traded This Run by BOT: %d" % (self.running_qty - self.starting_qty1))
@@ -394,7 +394,7 @@ class OrderManager:
         """Ensure the WS connections are still open."""
         return self.exchange.is_open()
 
-    def exit(self, signalnum, frame):
+    def exit(self, signum, frame):
         logger.info("Shutting down. All open orders will be cancelled.")
         try:
             if self.position == 0:
@@ -405,6 +405,7 @@ class OrderManager:
         except Exception as e:
             logger.info("Unable to cancel orders: %s" % e)
 
+        logger.info("System closed.")
         sys.exit()
 
     def run_loop(self):
